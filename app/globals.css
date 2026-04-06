@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 14% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 8%;
+    --primary: 0 84% 44%;          /* deep red — the Quint/Wire accent */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 14% 93%;
+    --secondary-foreground: 220 14% 8%;
+    --muted: 210 14% 95%;
+    --muted-foreground: 215 14% 40%;
+    --accent: 210 14% 95%;
+    --accent-foreground: 220 14% 8%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 18% 89%;
+    --input: 214 18% 89%;
+    --ring: 0 84% 44%;
+    --radius: 0.25rem;
+  }
+
+  .dark {
+    --background: 220 16% 8%;
+    --foreground: 210 40% 96%;
+    --card: 220 16% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 220 16% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 0 78% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 215 18% 55%;
+    --accent: 220 14% 16%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 18%;
+    --input: 220 14% 18%;
+    --ring: 0 78% 52%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-[#f7f7f5] text-foreground;
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-playfair), Georgia, serif;
+  }
+}
+
+/* ─── News-site utility classes ─────────────────────────────── */
+@layer components {
+  /* Section label above headlines — red pill/bar treatment */
+  .section-label {
+    @apply inline-block text-[10px] font-bold uppercase tracking-[0.12em]
+           bg-red-600 text-white px-2 py-0.5 rounded-sm;
+  }
+
+  /* Category divider in section headers */
+  .section-header {
+    @apply flex items-center gap-3 mb-4;
+  }
+  .section-header h2 {
+    @apply text-base font-bold uppercase tracking-wide text-gray-900;
+  }
+  .section-header::after {
+    content: "";
+    @apply flex-1 h-px bg-gray-200;
+  }
+
+  /* Divider line used in card bottom metas */
+  .meta-bar {
+    @apply flex items-center gap-2 text-[11px] text-gray-400 uppercase tracking-wide;
+  }
+
+  /* Card hover lift */
+  .card-hover {
+    @apply transition-transform duration-200 hover:-translate-y-0.5;
+  }
+}
+
+/* ─── TipTap editor ─────────────────────────────────────────── */
+.tiptap-content {
+  @apply prose prose-slate max-w-none;
+}
+.ProseMirror { @apply outline-none min-h-[400px] p-4; }
+.ProseMirror img { @apply max-w-full rounded my-4; }
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply text-muted-foreground float-left pointer-events-none h-0;
+}
+
+/* ─── Breaking news ticker ──────────────────────────────────── */
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker-scroll {
+  animation: ticker 40s linear infinite;
+}
+.animate-ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* ─── Scrollbar hide ────────────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+

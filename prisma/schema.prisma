@@ -1,0 +1,223 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────
+//  Auth models (NextAuth v5 / @auth/prisma-adapter)
+// ─────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────────────────────
+//  Users
+// ─────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(REPORTER)
+  bio           String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  articles Article[]
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  REPORTER
+}
+
+// ─────────────────────────────────────────────────────────
+//  Categories
+// ─────────────────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  color       String     @default("#DC2626")
+  parentId    String?
+  parent      Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children    Category[] @relation("SubCategories")
+  articles    Article[]
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  @@index([slug])
+}
+
+// ─────────────────────────────────────────────────────────
+//  Tags
+// ─────────────────────────────────────────────────────────
+
+model Tag {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  articles Article[]
+
+  @@index([slug])
+}
+
+// ─────────────────────────────────────────────────────────
+//  Articles
+// ─────────────────────────────────────────────────────────
+
+model Article {
+  id               String    @id @default(cuid())
+  title            String
+  slug             String    @unique
+  content          String    @db.Text
+  excerpt          String?   @db.Text
+  featuredImage    String?
+  featuredImageAlt String?
+  status           Status    @default(DRAFT)
+  publishedAt      DateTime?
+  isFeatured       Boolean   @default(false)
+  viewCount        Int       @default(0)
+  readingTime      Int?
+  metaTitle        String?
+  metaDescription  String?
+
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  tags       Tag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status, publishedAt])
+  @@index([categoryId, status])
+  @@index([authorId])
+}
+
+enum Status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ─────────────────────────────────────────────────────────
+//  Ads
+// ─────────────────────────────────────────────────────────
+
+model Ad {
+  id          String     @id @default(cuid())
+  title       String
+  type        AdType     @default(BANNER)
+  imageUrl    String?
+  adSlotId    String?
+  adClient    String?
+  targetUrl   String?
+  position    AdPosition
+  isActive    Boolean    @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  impressions Int        @default(0)
+  clicks      Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([position, isActive])
+}
+
+enum AdType {
+  BANNER
+  ADSENSE
+}
+
+enum AdPosition {
+  HEADER
+  FOOTER
+  SIDEBAR_TOP
+  SIDEBAR_BOTTOM
+  ARTICLE_INLINE
+  ARTICLE_BOTTOM
+  HOMEPAGE_BANNER
+}
+
+// ─────────────────────────────────────────────────────────
+//  Breaking News
+// ─────────────────────────────────────────────────────────
+
+model BreakingNews {
+  id        String    @id @default(cuid())
+  text      String
+  url       String?
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([isActive])
+}
+
+// ─────────────────────────────────────────────────────────
+//  Media
+// ─────────────────────────────────────────────────────────
+
+model Media {
+  id           String   @id @default(cuid())
+  filename     String
+  publicId     String   @unique
+  url          String
+  format       String
+  width        Int?
+  height       Int?
+  size         Int?
+  altText      String?
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([publicId])
+}
