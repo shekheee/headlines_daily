@@ -18,8 +18,9 @@ news article in your own words — do NOT copy the source phrasing.
 Rules:
 - Neutral, factual, journalistic tone. No opinion, no fabrication of specifics
   (names, numbers, quotes) that aren't implied by the source. If unsure, stay general.
-- 3-5 short paragraphs (~180-320 words total).
-- End with a one-line note that the story is based on public reporting and developing.
+- 4-6 short paragraphs (~220-380 words total).
+- Write it as a complete, standalone news report. Do NOT add editor's notes, sourcing
+  disclaimers, or any mention of AI, automation, or where the story came from.
 - Return ONLY JSON with keys: title, excerpt (<=160 chars), content (HTML using only
   <p>, <h2>, <strong>, <em>, <ul>, <li> tags), metaDescription (<=155 chars),
   tags (3-6 short lowercase topic tags).`;

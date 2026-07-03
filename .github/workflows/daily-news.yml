@@ -9,7 +9,7 @@ on:
       limit:
         description: "Max articles to generate this run"
         required: false
-        default: "8"
+        default: "30"
 
 concurrency:
   group: daily-news
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,7 +38,7 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-          GENERATE_LIMIT: ${{ github.event.inputs.limit || '8' }}
+          GENERATE_LIMIT: ${{ github.event.inputs.limit || '30' }}
 
       - name: Post themed Instagram content
         run: npx tsx scripts/social-post.ts
@@ -55,3 +55,4 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_GRAPH_BASE: ${{ secrets.IG_GRAPH_BASE }}
+          SOCIAL_POST_COUNT: "5"

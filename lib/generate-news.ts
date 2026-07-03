@@ -10,8 +10,8 @@ import { rewriteArticle } from "@/lib/gemini";
 import { generateAndHostArticleImage } from "@/lib/gemini-image";
 import { buildCaption, isInstagramConfigured, postToInstagram } from "@/lib/instagram";
 
-const ITEMS_PER_FEED = 3;
-export const DEFAULT_MAX_PER_RUN = 8;
+const ITEMS_PER_FEED = 4;
+export const DEFAULT_MAX_PER_RUN = 30;
 
 export interface GenerateResult {
   ok: boolean;
@@ -24,14 +24,15 @@ export interface GenerateResult {
 }
 
 async function ensureAuthor() {
+  // Keep the original email as the stable key, but present a neutral editorial identity.
   return prisma.user.upsert({
     where: { email: "newsroom-ai@dailynews.com" },
-    update: {},
+    update: { name: "Headlines Desk", bio: "The Headlines Daily editorial desk." },
     create: {
       email: "newsroom-ai@dailynews.com",
-      name: "Newsroom AI",
+      name: "Headlines Desk",
       role: "EDITOR",
-      bio: "Automated newsroom assistant. Articles are AI-drafted from public reporting and reviewed by editors.",
+      bio: "The Headlines Daily editorial desk.",
     },
   });
 }
