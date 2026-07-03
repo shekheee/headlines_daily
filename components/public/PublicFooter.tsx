@@ -4,6 +4,7 @@ import { Rss } from "lucide-react";
 
 async function getFooterCategories() {
   return prisma.category.findMany({
+    where: { articles: { some: { status: "PUBLISHED" } } },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     take: 12,
   });

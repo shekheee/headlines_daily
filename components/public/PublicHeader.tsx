@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 
 async function getCategories() {
   return prisma.category.findMany({
-    where: { parentId: null },
+    where: { parentId: null, articles: { some: { status: "PUBLISHED" } } },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     take: 9,
   });
