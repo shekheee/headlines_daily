@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BreakingNewsTicker } from "@/components/public/BreakingNewsTicker";
+import { LanguageSwitcher } from "@/components/public/LanguageSwitcher";
 import { Search } from "lucide-react";
 
 async function getCategories() {
@@ -36,9 +37,10 @@ export async function PublicHeader() {
             {appName.slice(1)}
           </Link>
 
-          {/* Right: date + search */}
+          {/* Right: date + language + search */}
           <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-400 hidden md:block">{today}</span>
+            <span className="text-xs text-gray-400 hidden lg:block">{today}</span>
+            <LanguageSwitcher />
             <Link
               href="/search"
               aria-label="Search"

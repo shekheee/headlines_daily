@@ -118,3 +118,27 @@
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ─── Google Translate: hide the injected banner/chrome ─────── */
+.goog-te-banner-frame,
+.goog-te-gadget-icon,
+.skiptranslate > iframe { display: none !important; }
+body { top: 0 !important; position: static !important; }
+#goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}
+/* Google wraps translated text in <font> tags — keep them inheriting styles */
+font { font: inherit; color: inherit; }
+
+/* ─── Reading polish for article body ───────────────────────── */
+.article-body {
+  @apply prose prose-lg prose-slate max-w-none
+         prose-headings:font-playfair prose-headings:font-bold
+         prose-p:leading-relaxed prose-p:text-[1.075rem] prose-p:text-gray-800
+         prose-a:text-red-700 prose-a:no-underline hover:prose-a:underline
+         prose-img:rounded-lg prose-strong:text-gray-900
+         prose-blockquote:border-l-red-600 prose-blockquote:bg-red-50/40
+         prose-blockquote:py-1 prose-blockquote:not-italic;
+}
+
