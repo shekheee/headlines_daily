@@ -1,0 +1,38 @@
+name: Instagram Engage
+
+# Replies to comments on our recent posts a few times a day. Fast replies boost
+# the engagement signal and expand reach. Official API only — never touches
+# other accounts (Instagram has no API to follow/like/comment on others).
+on:
+  schedule:
+    - cron: "0 4 * * *"
+    - cron: "0 10 * * *"
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: instagram-engage
+  cancel-in-progress: false
+
+jobs:
+  engage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Reply to recent comments
+        run: npx tsx scripts/social-engage.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          IG_BRAND_HANDLE: ${{ secrets.IG_BRAND_HANDLE }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_GRAPH_BASE: ${{ secrets.IG_GRAPH_BASE }}

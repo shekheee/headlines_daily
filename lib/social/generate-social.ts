@@ -12,6 +12,7 @@ import { uploadImage } from "@/lib/cloudinary";
 import { geminiJson } from "@/lib/gemini";
 import { generateAndHostImage } from "@/lib/gemini-image";
 import { getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
+import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
 import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
 import { primeReel, reelVideoUrl } from "@/lib/social/reel";
@@ -64,6 +65,7 @@ interface Article {
 interface PostDraft {
   slideUrls: string[];
   videoUrl?: string;
+  coverUrl?: string; // a 4:5 still used for Facebook cross-post + Story share
   caption: string;
   firstComment?: string;
   usedSlugs: string[];
@@ -261,7 +263,7 @@ async function buildThemePost(theme: Theme, date: Date, style: StylePack): Promi
     } else errors.push("no article for explainer");
   }
 
-  return { slideUrls, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, ...theme.hashtags]), usedSlugs, errors };
+  return { slideUrls, coverUrl: slideUrls[0], caption: cap, firstComment: hashtagComment([...BRAND_TAGS, ...theme.hashtags]), usedSlugs, errors };
 }
 
 // ── Single top-story image post ──────────────────────────────────────────────
@@ -277,7 +279,7 @@ async function buildArticlePost(a: Article, accent: string, style: StylePack, ct
   }
   const slide = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 9), sub: copy?.sub, brand: BRAND, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
-  return { slideUrls: [slide], caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug)]), usedSlugs: [a.slug], errors };
+  return { slideUrls: [slide], coverUrl: slide, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug)]), usedSlugs: [a.slug], errors };
 }
 
 // ── Reel (9:16 motion video) ─────────────────────────────────────────────────
@@ -293,8 +295,9 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
   }
   const video = reelVideoUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, brand: BRAND, accent });
   await primeReel(video); // pre-generate so IG's fetch doesn't time out
+  const cover = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, brand: BRAND, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
-  return { slideUrls: [], videoUrl: video, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
+  return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
 }
 
 // ── Story teaser (plain image; API can't do poll/link stickers) ──────────────
@@ -305,14 +308,14 @@ async function buildStory(a: Article, accent: string): Promise<PostDraft> {
   return { slideUrls: [slide], caption: "", usedSlugs: [], errors: [] };
 }
 
-async function finalize(label: string, kind: string, format: string, draft: PostDraft, meta: { theme?: string; style?: string; articleSlug?: string }, dryRun?: boolean): Promise<SocialResult> {
+async function finalize(label: string, kind: string, format: string, draft: PostDraft, meta: { theme?: string; style?: string; articleSlug?: string; alsoStory?: boolean }, dryRun?: boolean): Promise<SocialResult> {
   const hasMedia = draft.videoUrl || draft.slideUrls.length;
   if (!hasMedia) {
     return { ok: false, label, kind, format, slides: 0, instagram: { skipped: "nothing to post" }, errors: draft.errors };
   }
   let instagram: unknown;
   if (dryRun) {
-    instagram = { skipped: "dry run", media: draft.videoUrl || draft.slideUrls };
+    instagram = { skipped: "dry run", media: draft.videoUrl || draft.slideUrls, facebook: isFacebookConfigured() ? "would cross-post" : "not configured", story: meta.alsoStory ? "would share to story" : undefined };
     return { ok: true, label, kind, format, slides: draft.slideUrls.length || 1, instagram, errors: draft.errors };
   }
   let res: IgPostResult;
@@ -326,17 +329,27 @@ async function finalize(label: string, kind: string, format: string, draft: Post
     res = await postToInstagram({ imageUrl: draft.slideUrls[0], caption: draft.caption, firstComment: draft.firstComment });
   }
   await record(res, { kind, format, theme: meta.theme, style: meta.style, articleSlug: meta.articleSlug });
+
+  // Best-effort extra reach surfaces (never fail the main post over these).
+  if (res.posted && kind !== "story" && draft.coverUrl) {
+    if (isFacebookConfigured()) {
+      await postToFacebookPage({ imageUrl: draft.coverUrl, caption: draft.caption }).catch(() => {});
+    }
+    if (meta.alsoStory) {
+      await postStory({ imageUrl: draft.coverUrl }).catch(() => {});
+    }
+  }
   return { ok: Boolean(res.posted), label, kind, format, slides: draft.slideUrls.length || 1, instagram: res, errors: draft.errors };
 }
 
 // ── Public entry points ──────────────────────────────────────────────────────
 
 /** Single themed post (API route / manual). */
-export async function generateSocialPost(date = new Date(), opts: { dryRun?: boolean } = {}): Promise<SocialResult> {
+export async function generateSocialPost(date = new Date(), opts: { dryRun?: boolean; alsoStory?: boolean } = {}): Promise<SocialResult> {
   const style = getStylePack(date);
   const theme = getThemeForDate(date);
   const draft = await buildThemePost(theme, date, style);
-  return finalize(theme.name, theme.slides > 1 ? "carousel" : "feed", theme.style, draft, { theme: theme.id, style: style.name, articleSlug: draft.usedSlugs[0] }, opts.dryRun);
+  return finalize(theme.name, theme.slides > 1 ? "carousel" : "feed", theme.style, draft, { theme: theme.id, style: style.name, articleSlug: draft.usedSlugs[0], alsoStory: opts.alsoStory }, opts.dryRun);
 }
 
 /** Full daily batch: themed post + 1 Reel + top-story posts + a Story teaser. */
@@ -394,7 +407,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
   const style = getStylePack(date);
   const resolved = action || slotForHour(date.getUTCHours());
 
-  if (resolved === "theme") return generateSocialPost(date, opts);
+  if (resolved === "theme") return generateSocialPost(date, { ...opts, alsoStory: true });
 
   const candidates = await fetchUnposted(6, 3);
   const a = candidates[0];
@@ -402,7 +415,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
 
   if (resolved === "reel") {
     const draft = await buildReelPost(a, accentFor(style, 1, date), style, 1);
-    return finalize(`Reel · ${a.categoryName}`, "reel", "reel", draft, { style: style.name, articleSlug: a.slug }, opts.dryRun);
+    return finalize(`Reel · ${a.categoryName}`, "reel", "reel", draft, { style: style.name, articleSlug: a.slug, alsoStory: true }, opts.dryRun);
   }
   if (resolved === "story") {
     const draft = await buildStory(a, accentFor(style, 0, date));
@@ -410,7 +423,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
   }
   // default: article
   const draft = await buildArticlePost(a, accentFor(style, 2, date), style, 2);
-  return finalize(`Top Story · ${a.categoryName}`, "feed", "article-single", draft, { style: style.name, articleSlug: a.slug }, opts.dryRun);
+  return finalize(`Top Story · ${a.categoryName}`, "feed", "article-single", draft, { style: style.name, articleSlug: a.slug, alsoStory: true }, opts.dryRun);
 }
 
 /** Map a UTC hour to a post type across the Indian day (IST = UTC+5:30). */

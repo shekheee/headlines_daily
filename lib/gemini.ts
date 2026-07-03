@@ -29,6 +29,26 @@ Rules:
   <p>, <h2>, <strong>, <em>, <ul>, <li> tags), metaDescription (<=155 chars),
   tags (3-6 short lowercase topic tags).`;
 
+/** Generic Gemini plain-text call. Returns the text, or empty string on failure. */
+export async function geminiText(prompt: string, temperature = 0.8): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature } }),
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    const text: string | undefined = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("");
+    return (text || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 /** Generic Gemini JSON call. Returns parsed JSON of type T, or null on failure. */
 export async function geminiJson<T = unknown>(prompt: string, temperature = 0.9): Promise<T | null> {
   const apiKey = process.env.GEMINI_API_KEY;
