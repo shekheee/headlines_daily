@@ -1,5 +1,6 @@
-// RSS sources mapped to the site's existing category slugs.
-// BBC feeds are reliable, well-formed, and include media thumbnails.
+// RSS sources for an INDIAN-audience news site, mapped to the site's category slugs.
+// Mix of leading Indian outlets (Times of India, The Hindu, NDTV, Indian Express)
+// for breadth and variety, India-first.
 export interface FeedSource {
   categorySlug: string;
   name: string;
@@ -7,29 +8,41 @@ export interface FeedSource {
 }
 
 export const FEED_SOURCES: FeedSource[] = [
-  // BBC
-  { categorySlug: "world", name: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" },
-  { categorySlug: "uk", name: "BBC UK", url: "https://feeds.bbci.co.uk/news/uk/rss.xml" },
-  { categorySlug: "politics", name: "BBC Politics", url: "https://feeds.bbci.co.uk/news/politics/rss.xml" },
-  { categorySlug: "business", name: "BBC Business", url: "https://feeds.bbci.co.uk/news/business/rss.xml" },
-  { categorySlug: "technology", name: "BBC Technology", url: "https://feeds.bbci.co.uk/news/technology/rss.xml" },
-  { categorySlug: "science", name: "BBC Science", url: "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml" },
-  { categorySlug: "sports", name: "BBC Sport", url: "https://feeds.bbci.co.uk/sport/rss.xml" },
-  { categorySlug: "entertainment", name: "BBC Entertainment", url: "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml" },
-  { categorySlug: "culture", name: "BBC Culture", url: "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml" },
-  { categorySlug: "india", name: "BBC India", url: "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml" },
-  // The Guardian (adds variety + reduces idea repetition)
-  { categorySlug: "world", name: "Guardian World", url: "https://www.theguardian.com/world/rss" },
-  { categorySlug: "uk", name: "Guardian UK", url: "https://www.theguardian.com/uk-news/rss" },
-  { categorySlug: "politics", name: "Guardian Politics", url: "https://www.theguardian.com/politics/rss" },
-  { categorySlug: "business", name: "Guardian Business", url: "https://www.theguardian.com/uk/business/rss" },
-  { categorySlug: "technology", name: "Guardian Tech", url: "https://www.theguardian.com/uk/technology/rss" },
-  { categorySlug: "science", name: "Guardian Science", url: "https://www.theguardian.com/science/rss" },
-  { categorySlug: "sports", name: "Guardian Sport", url: "https://www.theguardian.com/uk/sport/rss" },
-  { categorySlug: "entertainment", name: "Guardian Film", url: "https://www.theguardian.com/film/rss" },
-  { categorySlug: "culture", name: "Guardian Culture", url: "https://www.theguardian.com/uk/culture/rss" },
-  { categorySlug: "india", name: "Guardian India", url: "https://www.theguardian.com/world/india/rss" },
-  // Additional world desks
-  { categorySlug: "world", name: "Al Jazeera", url: "https://www.aljazeera.com/xml/rss/all.xml" },
-  { categorySlug: "world", name: "NPR World", url: "https://feeds.npr.org/1004/rss.xml" },
+  // ── India (national) ──────────────────────────────────────────
+  { categorySlug: "india", name: "Times of India – India", url: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms" },
+  { categorySlug: "india", name: "The Hindu – National", url: "https://www.thehindu.com/news/national/feeder/default.rss" },
+  { categorySlug: "india", name: "NDTV – India", url: "https://feeds.feedburner.com/ndtvnews-india-news" },
+  { categorySlug: "india", name: "Indian Express – India", url: "https://indianexpress.com/section/india/feed/" },
+
+  // ── Politics ──────────────────────────────────────────────────
+  { categorySlug: "politics", name: "Indian Express – Political Pulse", url: "https://indianexpress.com/section/political-pulse/feed/" },
+  { categorySlug: "politics", name: "NDTV – India", url: "https://feeds.feedburner.com/ndtvnews-india-news" },
+
+  // ── World ─────────────────────────────────────────────────────
+  { categorySlug: "world", name: "Times of India – World", url: "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms" },
+  { categorySlug: "world", name: "The Hindu – International", url: "https://www.thehindu.com/news/international/feeder/default.rss" },
+  { categorySlug: "world", name: "NDTV – World", url: "https://feeds.feedburner.com/ndtvnews-world-news" },
+
+  // ── Business ──────────────────────────────────────────────────
+  { categorySlug: "business", name: "Times of India – Business", url: "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms" },
+  { categorySlug: "business", name: "The Hindu – Business", url: "https://www.thehindu.com/business/feeder/default.rss" },
+  { categorySlug: "business", name: "Indian Express – Business", url: "https://indianexpress.com/section/business/feed/" },
+
+  // ── Sports (cricket-heavy for India) ──────────────────────────
+  { categorySlug: "sports", name: "Times of India – Sports", url: "https://timesofindia.indiatimes.com/rssfeeds/4719148.cms" },
+  { categorySlug: "sports", name: "The Hindu – Sport", url: "https://www.thehindu.com/sport/feeder/default.rss" },
+  { categorySlug: "sports", name: "NDTV – Sports", url: "https://feeds.feedburner.com/ndtvsports-latest" },
+
+  // ── Technology ────────────────────────────────────────────────
+  { categorySlug: "technology", name: "Times of India – Tech", url: "https://timesofindia.indiatimes.com/rssfeeds/66949542.cms" },
+  { categorySlug: "technology", name: "The Hindu – Sci-Tech", url: "https://www.thehindu.com/sci-tech/technology/feeder/default.rss" },
+  { categorySlug: "technology", name: "NDTV Gadgets 360", url: "https://feeds.feedburner.com/gadgets360-latest" },
+
+  // ── Entertainment (Bollywood) ─────────────────────────────────
+  { categorySlug: "entertainment", name: "Times of India – Entertainment", url: "https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms" },
+  { categorySlug: "entertainment", name: "Indian Express – Entertainment", url: "https://indianexpress.com/section/entertainment/feed/" },
+
+  // ── Science ───────────────────────────────────────────────────
+  { categorySlug: "science", name: "The Hindu – Science", url: "https://www.thehindu.com/sci-tech/science/feeder/default.rss" },
+  { categorySlug: "science", name: "Times of India – Science", url: "https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms" },
 ];
