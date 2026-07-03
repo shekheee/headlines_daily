@@ -21,7 +21,9 @@ export function reelVideoUrl(publicId: string, opts: ReelOptions): string {
   const du = Math.min(Math.max(opts.durationSec ?? 6, 4), 10);
   const t: string[] = [];
 
-  t.push("c_fill,g_auto,w_1080,h_1920");
+  // NOTE: g_auto is NOT supported with zoompan video generation (Cloudinary 500s),
+  // so use a plain center fill.
+  t.push("c_fill,w_1080,h_1920");
   t.push(`e_zoompan:mode_ofl;maxzoom_1.3;du_${du}`);
   t.push("e_brightness:-24");
 
