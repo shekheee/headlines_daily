@@ -30,8 +30,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export const revalidate = 60;
-
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { page: pageParam } = await searchParams;

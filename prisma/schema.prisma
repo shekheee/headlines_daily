@@ -126,6 +126,8 @@ model Article {
   readingTime      Int?
   metaTitle        String?
   metaDescription  String?
+  // Source article URL when auto-generated from an RSS feed (used for dedupe).
+  sourceUrl        String?   @unique
 
   authorId   String
   author     User      @relation(fields: [authorId], references: [id])

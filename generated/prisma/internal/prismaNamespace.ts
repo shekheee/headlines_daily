@@ -1283,6 +1283,7 @@ export const ArticleScalarFieldEnum = {
   readingTime: 'readingTime',
   metaTitle: 'metaTitle',
   metaDescription: 'metaDescription',
+  sourceUrl: 'sourceUrl',
   authorId: 'authorId',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
