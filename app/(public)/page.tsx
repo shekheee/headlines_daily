@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 async function getHomeData() {
-  const [featuredArticles, categories, latestArticles] = await Promise.all([
+  const [featuredArticles, categories, latestArticles, trendingArticles] = await Promise.all([
     prisma.article.findMany({
       where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
       orderBy: [{ publishedAt: "desc" }],
@@ -32,7 +32,7 @@ async function getHomeData() {
         articles: {
           where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
           orderBy: { publishedAt: "desc" },
-          take: 4,
+          take: 3,
           select: {
             id: true, title: true, slug: true, excerpt: true,
             featuredImage: true, publishedAt: true, readingTime: true, isFeatured: true,
@@ -53,13 +53,24 @@ async function getHomeData() {
         category: { select: { name: true, slug: true, color: true } },
       },
     }),
+    prisma.article.findMany({
+      where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
+      orderBy: [{ viewCount: "desc" }, { publishedAt: "desc" }],
+      take: 6,
+      select: {
+        id: true, title: true, slug: true, excerpt: true,
+        featuredImage: true, publishedAt: true, readingTime: true, isFeatured: true,
+        author: { select: { name: true } },
+        category: { select: { name: true, slug: true, color: true } },
+      },
+    }),
   ]);
 
-  return { featuredArticles, categories, latestArticles };
+  return { featuredArticles, categories, latestArticles, trendingArticles };
 }
 
 export default async function HomePage() {
-  const { featuredArticles, categories, latestArticles } = await getHomeData();
+  const { featuredArticles, categories, latestArticles, trendingArticles } = await getHomeData();
   const [hero, ...topGrid] = featuredArticles;
 
   return (
@@ -71,7 +82,7 @@ export default async function HomePage() {
 
         {/* ── HERO GRID ───────────────────── */}
         {/* Large hero on left, 4 stacked on right */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0.5 mb-8 bg-gray-200">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0.5 mb-7 bg-gray-200">
           {/* Big hero */}
           <div className="lg:col-span-2 bg-[#f7f7f5]">
             {hero ? (
@@ -99,7 +110,7 @@ export default async function HomePage() {
           .map((cat, idx) => {
             const [lead, ...rest] = cat.articles;
             return (
-              <section key={cat.id} className="mb-10">
+              <section key={cat.id} className="mb-8">
                 {/* Section heading */}
                 <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-gray-900">
                   <span
@@ -140,7 +151,7 @@ export default async function HomePage() {
           })}
 
         {/* ── LATEST + SIDEBAR ────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-2">
           {/* Latest news list */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-gray-900">
@@ -148,15 +159,40 @@ export default async function HomePage() {
                 Latest
               </span>
             </div>
-            <div className="space-y-0">
+            <div className="divide-y divide-gray-200">
               {latestArticles.map((a) => (
                 <ArticleCard key={a.id} article={a} variant="compact" />
               ))}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <aside className="space-y-5">
+          {/* Sidebar: Trending / Most Read + any ads */}
+          <aside className="space-y-6">
+            {trendingArticles.length > 0 && (
+              <div>
+                <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-red-600">
+                  <span className="text-[11px] font-extrabold uppercase tracking-[0.15em] px-2 py-0.5 text-white bg-red-600">
+                    Trending
+                  </span>
+                </div>
+                <ol className="space-y-4">
+                  {trendingArticles.map((a, i) => (
+                    <li key={a.id} className="flex gap-3">
+                      <span className="text-2xl font-bold leading-none text-gray-300 w-7 shrink-0 tabular-nums">
+                        {i + 1}
+                      </span>
+                      <Link
+                        href={`/articles/${a.slug}`}
+                        className="text-sm font-semibold leading-snug text-gray-900 hover:text-red-600 transition-colors"
+                        style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
+                      >
+                        {a.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
             <AdSlot position="SIDEBAR_TOP" />
             <AdSlot position="SIDEBAR_BOTTOM" />
           </aside>
