@@ -25,6 +25,24 @@ export function isInstagramConfigured(): boolean {
   return Boolean(process.env.IG_USER_ID && process.env.IG_ACCESS_TOKEN);
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Poll a media container until Instagram finishes fetching/processing the image. */
+async function waitForContainerReady(containerId: string, token: string, tries = 8): Promise<boolean> {
+  for (let i = 0; i < tries; i++) {
+    await sleep(2500);
+    try {
+      const res = await fetch(`${GRAPH}/${containerId}?fields=status_code&access_token=${token}`);
+      const data = await res.json();
+      if (data.status_code === "FINISHED") return true;
+      if (data.status_code === "ERROR" || data.status_code === "EXPIRED") return false;
+    } catch {
+      // keep polling
+    }
+  }
+  return true; // fall through and attempt publish anyway
+}
+
 export async function postToInstagram(input: {
   imageUrl: string;
   caption: string;
@@ -54,6 +72,9 @@ export async function postToInstagram(input: {
     if (!createRes.ok || !createData.id) {
       return { posted: false, error: `container: ${JSON.stringify(createData).slice(0, 200)}` };
     }
+
+    // Wait for Instagram to fetch + process the image before publishing.
+    await waitForContainerReady(createData.id, token);
 
     // 2) Publish the container.
     const pubRes = await fetch(`${GRAPH}/${userId}/media_publish`, {
@@ -113,6 +134,7 @@ export async function postCarouselToInstagram(input: {
     if (!parent.res.ok || !parent.data.id) {
       return { posted: false, error: `parent: ${JSON.stringify(parent.data).slice(0, 200)}` };
     }
+    await waitForContainerReady(parent.data.id, token);
     // 3) Publish.
     const pub = await post(`${userId}/media_publish`, { creation_id: parent.data.id });
     if (!pub.res.ok || !pub.data.id) {

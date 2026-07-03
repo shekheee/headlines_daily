@@ -30,12 +30,23 @@ export function publicIdFromUrl(url: string): string | null {
 function encodeText(text: string): string {
   const cleaned = text
     .replace(/[\r\n]+/g, " ")
-    .replace(/[“”"]/g, "")
-    .replace(/%/g, " percent")
+    .replace(/[“”«»„"]/g, "")
+    .replace(/[‘’]/g, "'")
+    .replace(/[—–]/g, "-")
+    .replace(/…/g, "...")
+    .replace(/£/g, " GBP ")
+    .replace(/€/g, " EUR ")
+    .replace(/\$/g, " USD ")
+    .replace(/°/g, " deg ")
+    .replace(/%/g, " percent ")
     .replace(/&/g, " and ")
+    // Drop anything left outside printable ASCII so Cloudinary never 400s.
+    .replace(/[^\x20-\x7E]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  return encodeURIComponent(cleaned);
+  // Cloudinary uses "," and "/" as transformation delimiters, so literal commas
+  // and slashes inside overlay text must be DOUBLE url-encoded.
+  return encodeURIComponent(cleaned).replace(/%2C/g, "%252C").replace(/%2F/g, "%252F");
 }
 
 export interface OverlayOptions {

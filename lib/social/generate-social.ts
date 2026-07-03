@@ -59,7 +59,7 @@ function stripHtml(html: string): string {
 }
 function trimWords(text: string, max: number): string {
   const words = text.replace(/\s+/g, " ").trim().split(" ");
-  return words.length <= max ? words.join(" ") : words.slice(0, max).join(" ") + "…";
+  return words.length <= max ? words.join(" ") : words.slice(0, max).join(" ") + "...";
 }
 function slugTag(s: string): string {
   return `#${s.replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
