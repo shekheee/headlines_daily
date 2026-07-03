@@ -18,7 +18,7 @@ async function main() {
 
   console.log(`[social] ${result.date} — style "${result.stylePack}" — posted ${result.posted}/${result.requested} in ${result.tookMs}ms`);
   for (const p of result.posts) {
-    console.log(`  ${p.ok ? "✓" : "✗"} ${p.label} (${p.style}, ${p.slides} slide${p.slides === 1 ? "" : "s"}) ${JSON.stringify(p.instagram).slice(0, 120)}`);
+    console.log(`  ${p.ok ? "✓" : "✗"} ${p.label} (${p.kind}/${p.format}, ${p.slides} slide${p.slides === 1 ? "" : "s"}) ${JSON.stringify(p.instagram).slice(0, 120)}`);
     if (p.errors.length) console.log(`     errors: ${p.errors.join("; ")}`);
   }
 }

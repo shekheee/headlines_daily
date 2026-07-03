@@ -27,7 +27,7 @@ export function publicIdFromUrl(url: string): string | null {
 // Cloudinary text layers use "," and "/" as delimiters, so text must be encoded.
 // encodeURIComponent turns space->%20, comma->%2C, slash->%2F which Cloudinary accepts,
 // but we also strip characters that commonly break layers.
-function encodeText(text: string): string {
+export function encodeText(text: string): string {
   const cleaned = text
     .replace(/[\r\n]+/g, " ")
     .replace(/[“”«»„"]/g, "")

@@ -3,7 +3,7 @@ name: Daily News
 # Generates and publishes fresh articles once a day (and on manual trigger).
 on:
   schedule:
-    - cron: "0 6 * * *" # 06:00 UTC daily
+    - cron: "0 1 * * *" # 01:00 UTC (~06:30 IST) — before the day's social posts
   workflow_dispatch:
     inputs:
       limit:
@@ -39,20 +39,3 @@ jobs:
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           GENERATE_LIMIT: ${{ github.event.inputs.limit || '30' }}
-
-      - name: Post themed Instagram content
-        run: npx tsx scripts/social-post.ts
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
-          GEMINI_IMAGE_MODEL: ${{ secrets.GEMINI_IMAGE_MODEL }}
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-          IG_BRAND_HANDLE: ${{ secrets.IG_BRAND_HANDLE }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_GRAPH_BASE: ${{ secrets.IG_GRAPH_BASE }}
-          SOCIAL_POST_COUNT: "5"

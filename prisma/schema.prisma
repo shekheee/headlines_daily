@@ -128,6 +128,8 @@ model Article {
   metaDescription  String?
   // Source article URL when auto-generated from an RSS feed (used for dedupe).
   sourceUrl        String?   @unique
+  // When this article was posted to Instagram (used to spread posts + avoid repeats).
+  igPostedAt       DateTime?
 
   authorId   String
   author     User      @relation(fields: [authorId], references: [id])
@@ -148,6 +150,35 @@ enum Status {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+// ─────────────────────────────────────────────────────────
+//  Instagram post log + insights (learning loop)
+// ─────────────────────────────────────────────────────────
+
+model SocialPost {
+  id        String   @id @default(cuid())
+  igMediaId String   @unique
+  kind      String   // feed | carousel | reel | story
+  theme     String? // theme id (e.g. tech_tuesday)
+  format    String? // motivation | headlines | explainer | article-single | reel | story
+  style     String? // rotating style-pack name
+  slotHour  Int? // UTC hour it was posted (for best-time analysis)
+  articleSlug String?
+
+  // Cached Instagram insights (refreshed by the insights job)
+  likes     Int?
+  reach     Int?
+  saved     Int?
+  comments  Int?
+  shares    Int?
+  fetchedAt DateTime?
+
+  postedAt  DateTime @default(now())
+
+  @@index([theme])
+  @@index([format])
+  @@index([postedAt])
 }
 
 // ─────────────────────────────────────────────────────────

@@ -1,0 +1,57 @@
+name: Instagram Posts
+
+# Spreads Instagram posts across Indian peak hours (IST = UTC+5:30).
+# Each run posts ONE item; the type is chosen by the UTC hour:
+#   02:30 UTC (~08:00 IST)  -> themed post
+#   06:00 UTC (~11:30 IST)  -> Reel
+#   09:00 UTC (~14:30 IST)  -> top-story post
+#   11:00 UTC (~16:30 IST)  -> top-story post
+#   13:00 UTC (~18:30 IST)  -> top-story post
+#   15:30 UTC (~21:00 IST)  -> Story teaser
+on:
+  schedule:
+    - cron: "30 2 * * *"
+    - cron: "0 6 * * *"
+    - cron: "0 9 * * *"
+    - cron: "0 11 * * *"
+    - cron: "0 13 * * *"
+    - cron: "30 15 * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Force a post type (theme|reel|article|story). Leave blank to auto-pick by time."
+        required: false
+        default: ""
+
+concurrency:
+  group: instagram-posts
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Post one Instagram item
+        run: npx tsx scripts/social-slot.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          GEMINI_IMAGE_MODEL: ${{ secrets.GEMINI_IMAGE_MODEL }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          IG_BRAND_HANDLE: ${{ secrets.IG_BRAND_HANDLE }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_GRAPH_BASE: ${{ secrets.IG_GRAPH_BASE }}
+          SOCIAL_ACTION: ${{ github.event.inputs.action }}

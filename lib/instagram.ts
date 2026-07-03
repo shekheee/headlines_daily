@@ -27,6 +27,22 @@ export function isInstagramConfigured(): boolean {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Post the hashtags/extra text as the FIRST COMMENT (keeps captions clean, still discoverable). */
+export async function postComment(mediaId: string, message: string): Promise<boolean> {
+  if (!isInstagramConfigured() || !message.trim()) return false;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  try {
+    const res = await fetch(`${GRAPH}/${mediaId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message.slice(0, 2200), access_token: token }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Poll a media container until Instagram finishes fetching/processing the image. */
 async function waitForContainerReady(containerId: string, token: string, tries = 8): Promise<boolean> {
   for (let i = 0; i < tries; i++) {
@@ -46,6 +62,7 @@ async function waitForContainerReady(containerId: string, token: string, tries =
 export async function postToInstagram(input: {
   imageUrl: string;
   caption: string;
+  firstComment?: string;
 }): Promise<IgPostResult> {
   if (!isInstagramConfigured()) {
     return { posted: false, skipped: "Instagram not configured (IG_USER_ID / IG_ACCESS_TOKEN missing)" };
@@ -87,6 +104,7 @@ export async function postToInstagram(input: {
       return { posted: false, error: `publish: ${JSON.stringify(pubData).slice(0, 200)}` };
     }
 
+    if (input.firstComment) await postComment(pubData.id, input.firstComment);
     return { posted: true, id: pubData.id };
   } catch (e) {
     return { posted: false, error: e instanceof Error ? e.message : "unknown error" };
@@ -97,13 +115,14 @@ export async function postToInstagram(input: {
 export async function postCarouselToInstagram(input: {
   imageUrls: string[];
   caption: string;
+  firstComment?: string;
 }): Promise<IgPostResult> {
   if (!isInstagramConfigured()) {
     return { posted: false, skipped: "Instagram not configured (IG_USER_ID / IG_ACCESS_TOKEN missing)" };
   }
   const urls = input.imageUrls.filter(Boolean).slice(0, 10);
   if (urls.length === 0) return { posted: false, skipped: "No images to post" };
-  if (urls.length === 1) return postToInstagram({ imageUrl: urls[0], caption: input.caption });
+  if (urls.length === 1) return postToInstagram({ imageUrl: urls[0], caption: input.caption, firstComment: input.firstComment });
 
   const userId = process.env.IG_USER_ID!;
   const token = process.env.IG_ACCESS_TOKEN!;
@@ -140,10 +159,112 @@ export async function postCarouselToInstagram(input: {
     if (!pub.res.ok || !pub.data.id) {
       return { posted: false, error: `publish: ${JSON.stringify(pub.data).slice(0, 200)}` };
     }
+    if (input.firstComment) await postComment(pub.data.id, input.firstComment);
     return { posted: true, id: pub.data.id };
   } catch (e) {
     return { posted: false, error: e instanceof Error ? e.message : "unknown error" };
   }
+}
+
+/** Publish a Reel (9:16 MP4). Video processing takes longer, so we poll more. */
+export async function postReel(input: { videoUrl: string; caption: string; firstComment?: string }): Promise<IgPostResult> {
+  if (!isInstagramConfigured()) {
+    return { posted: false, skipped: "Instagram not configured" };
+  }
+  if (!input.videoUrl) return { posted: false, skipped: "No video to post" };
+  const userId = process.env.IG_USER_ID!;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  try {
+    const createRes = await fetch(`${GRAPH}/${userId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ media_type: "REELS", video_url: input.videoUrl, caption: input.caption.slice(0, 2200), access_token: token }),
+    });
+    const createData = await createRes.json();
+    if (!createRes.ok || !createData.id) {
+      return { posted: false, error: `reel container: ${JSON.stringify(createData).slice(0, 200)}` };
+    }
+    // Video needs longer to transcode.
+    const ready = await waitForContainerReady(createData.id, token, 20);
+    if (!ready) return { posted: false, error: "reel container not ready (transcode failed)" };
+    const pubRes = await fetch(`${GRAPH}/${userId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ creation_id: createData.id, access_token: token }),
+    });
+    const pubData = await pubRes.json();
+    if (!pubRes.ok || !pubData.id) return { posted: false, error: `reel publish: ${JSON.stringify(pubData).slice(0, 200)}` };
+    if (input.firstComment) await postComment(pubData.id, input.firstComment);
+    return { posted: true, id: pubData.id };
+  } catch (e) {
+    return { posted: false, error: e instanceof Error ? e.message : "unknown error" };
+  }
+}
+
+/** Publish an image Story. NOTE: the Content Publishing API does NOT support poll/link
+ *  stickers on Stories, so this is a plain image Story (great for a daily teaser). */
+export async function postStory(input: { imageUrl: string }): Promise<IgPostResult> {
+  if (!isInstagramConfigured()) return { posted: false, skipped: "Instagram not configured" };
+  if (!input.imageUrl) return { posted: false, skipped: "No image to post" };
+  const userId = process.env.IG_USER_ID!;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  try {
+    const createRes = await fetch(`${GRAPH}/${userId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ media_type: "STORIES", image_url: input.imageUrl, access_token: token }),
+    });
+    const createData = await createRes.json();
+    if (!createRes.ok || !createData.id) return { posted: false, error: `story container: ${JSON.stringify(createData).slice(0, 200)}` };
+    await waitForContainerReady(createData.id, token);
+    const pubRes = await fetch(`${GRAPH}/${userId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ creation_id: createData.id, access_token: token }),
+    });
+    const pubData = await pubRes.json();
+    if (!pubRes.ok || !pubData.id) return { posted: false, error: `story publish: ${JSON.stringify(pubData).slice(0, 200)}` };
+    return { posted: true, id: pubData.id };
+  } catch (e) {
+    return { posted: false, error: e instanceof Error ? e.message : "unknown error" };
+  }
+}
+
+export interface MediaInsights {
+  likes?: number;
+  reach?: number;
+  saved?: number;
+  comments?: number;
+  shares?: number;
+}
+
+/** Fetch engagement insights for a published media item. */
+export async function getMediaInsights(mediaId: string): Promise<MediaInsights | null> {
+  if (!isInstagramConfigured()) return null;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  const out: MediaInsights = {};
+  // likes/comments come from the media node; reach/saved/shares from insights.
+  try {
+    const fieldsRes = await fetch(`${GRAPH}/${mediaId}?fields=like_count,comments_count&access_token=${token}`);
+    const fields = await fieldsRes.json();
+    if (typeof fields.like_count === "number") out.likes = fields.like_count;
+    if (typeof fields.comments_count === "number") out.comments = fields.comments_count;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const insRes = await fetch(`${GRAPH}/${mediaId}/insights?metric=reach,saved,shares&access_token=${token}`);
+    const ins = await insRes.json();
+    if (Array.isArray(ins.data)) {
+      for (const m of ins.data) {
+        const val = m?.values?.[0]?.value;
+        if (typeof val === "number") (out as Record<string, number>)[m.name] = val;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 export function buildCaption(a: {
