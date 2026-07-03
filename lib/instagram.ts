@@ -1,13 +1,18 @@
-// Instagram auto-posting via the Instagram Graph API.
+// Instagram auto-posting via the Instagram Content Publishing API.
 //
 // Requires (set as env vars when ready):
-//   IG_USER_ID       - the Instagram Business/Creator account ID (an IG account
-//                      linked to a Facebook Page)
-//   IG_ACCESS_TOKEN  - a long-lived access token with instagram_content_publish
+//   IG_USER_ID       - the Instagram Business/Creator account ID
+//   IG_ACCESS_TOKEN  - a long-lived token with content-publish permission
+//   IG_GRAPH_BASE    - (optional) API host. Two valid setups:
+//       * "API setup with Instagram login" (no Facebook Page needed):
+//           set IG_GRAPH_BASE=https://graph.instagram.com
+//       * "API setup with Facebook login" (IG linked to a Facebook Page):
+//           leave unset -> defaults to https://graph.facebook.com/v21.0
 //
-// Until those are set, postToInstagram() is a safe no-op so the daily job never fails.
+// Until IG_USER_ID + IG_ACCESS_TOKEN are set, postToInstagram() is a safe no-op
+// so the daily job never fails.
 
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = process.env.IG_GRAPH_BASE || "https://graph.facebook.com/v21.0";
 
 export interface IgPostResult {
   posted: boolean;
