@@ -16,6 +16,7 @@ import {
   Newspaper,
   Settings,
   ChevronRight,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/admin/ads", label: "Ads", icon: Megaphone },
   { href: "/admin/breaking-news", label: "Breaking News", icon: Zap },
   { href: "/admin/media", label: "Media Library", icon: Image },
+  { href: "/admin/social", label: "Instagram", icon: Share2 },
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
 ];
 

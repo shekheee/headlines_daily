@@ -230,6 +230,31 @@ export async function postStory(input: { imageUrl: string }): Promise<IgPostResu
   }
 }
 
+export interface AccountStats {
+  followers: number;
+  follows: number;
+  mediaCount: number;
+}
+
+/** Current account totals (followers / following / media count). */
+export async function getAccountStats(): Promise<AccountStats | null> {
+  if (!isInstagramConfigured()) return null;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  const userId = process.env.IG_USER_ID!;
+  try {
+    const res = await fetch(`${GRAPH}/${userId}?fields=followers_count,follows_count,media_count&access_token=${token}`);
+    const data = await res.json();
+    if (!res.ok) return null;
+    return {
+      followers: Number(data.followers_count) || 0,
+      follows: Number(data.follows_count) || 0,
+      mediaCount: Number(data.media_count) || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface MediaInsights {
   likes?: number;
   reach?: number;

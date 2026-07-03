@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { uploadImage } from "@/lib/cloudinary";
 import { geminiJson } from "@/lib/gemini";
 import { generateAndHostImage } from "@/lib/gemini-image";
-import { getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
+import { getAccountStats, getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
 import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
 import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
@@ -435,7 +435,18 @@ function slotForHour(utcHour: number): string {
 }
 
 /** Refresh cached insights for recently-posted media and log a performance summary. */
-export async function refreshInsightsAndSummarize(withinDays = 14): Promise<{ updated: number; summary: Record<string, { posts: number; avgEngagement: number }> }> {
+export async function refreshInsightsAndSummarize(withinDays = 14): Promise<{ updated: number; summary: Record<string, { posts: number; avgEngagement: number }>; followers?: number }> {
+  // Capture today's follower snapshot (IST day) so we can chart growth.
+  let followers: number | undefined;
+  const stats = await getAccountStats();
+  if (stats) {
+    followers = stats.followers;
+    const day = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10); // IST date
+    await prisma.accountSnapshot
+      .upsert({ where: { day }, create: { day, followers: stats.followers, follows: stats.follows, mediaCount: stats.mediaCount }, update: { followers: stats.followers, follows: stats.follows, mediaCount: stats.mediaCount } })
+      .catch(() => {});
+  }
+
   const since = new Date(Date.now() - withinDays * 86400_000);
   const recent = await prisma.socialPost.findMany({ where: { postedAt: { gte: since } } });
   let updated = 0;
@@ -459,5 +470,5 @@ export async function refreshInsightsAndSummarize(withinDays = 14): Promise<{ up
   }
   const summary: Record<string, { posts: number; avgEngagement: number }> = {};
   for (const [k, v] of Object.entries(byFormat)) summary[k] = { posts: v.posts, avgEngagement: v.posts ? Math.round((v.total / v.posts) * 10) / 10 : 0 };
-  return { updated, summary };
+  return { updated, summary, followers };
 }

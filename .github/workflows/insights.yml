@@ -23,10 +23,14 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npx prisma generate
-      - name: Refresh Instagram insights
+      - name: Refresh Instagram insights + follower snapshot
         run: npx tsx scripts/social-insights.ts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_GRAPH_BASE: ${{ secrets.IG_GRAPH_BASE }}
+      - name: Weekly growth report
+        run: npx tsx scripts/social-report.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

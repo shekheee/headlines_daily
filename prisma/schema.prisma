@@ -181,6 +181,16 @@ model SocialPost {
   @@index([postedAt])
 }
 
+// Daily snapshot of the Instagram account so we can chart follower growth.
+model AccountSnapshot {
+  id         String   @id @default(cuid())
+  day        String   @unique // YYYY-MM-DD (IST)
+  followers  Int      @default(0)
+  follows    Int      @default(0)
+  mediaCount Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
 // ─────────────────────────────────────────────────────────
 //  Ads
 // ─────────────────────────────────────────────────────────
