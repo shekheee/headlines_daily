@@ -71,11 +71,34 @@ export async function generateDailyNews(maxPerRun = DEFAULT_MAX_PER_RUN): Promis
   });
   const seen = new Set(existing.map((e) => e.sourceUrl));
 
-  const fresh = candidates
+  const deduped = candidates
     .filter((c) => !seen.has(c.item.link))
-    .filter((c, i, arr) => arr.findIndex((x) => x.item.link === c.item.link) === i)
-    .sort((a, b) => (b.item.publishedAt?.getTime() || 0) - (a.item.publishedAt?.getTime() || 0))
-    .slice(0, maxPerRun);
+    .filter((c, i, arr) => arr.findIndex((x) => x.item.link === c.item.link) === i);
+
+  // Group by category and pick round-robin so every section gets fair coverage
+  // (otherwise the newest items from a few busy feeds crowd everyone else out).
+  const byCategory = new Map<string, typeof deduped>();
+  for (const c of deduped) {
+    const arr = byCategory.get(c.categorySlug) ?? [];
+    arr.push(c);
+    byCategory.set(c.categorySlug, arr);
+  }
+  for (const arr of byCategory.values()) {
+    arr.sort((a, b) => (b.item.publishedAt?.getTime() || 0) - (a.item.publishedAt?.getTime() || 0));
+  }
+  const fresh: typeof deduped = [];
+  let addedInRound = true;
+  while (fresh.length < maxPerRun && addedInRound) {
+    addedInRound = false;
+    for (const arr of byCategory.values()) {
+      const next = arr.shift();
+      if (next) {
+        fresh.push(next);
+        addedInRound = true;
+        if (fresh.length >= maxPerRun) break;
+      }
+    }
+  }
 
   const created: { id: string; title: string; excerpt: string; slug: string; category: string; image: string | null }[] = [];
   const errors: string[] = [...feedErrors];
