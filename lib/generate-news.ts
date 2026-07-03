@@ -7,6 +7,7 @@ import { estimateReadingTime } from "@/lib/utils";
 import { FEED_SOURCES } from "@/lib/news-feeds";
 import { fetchFeed, type RssItem } from "@/lib/rss";
 import { rewriteArticle } from "@/lib/gemini";
+import { generateAndHostArticleImage } from "@/lib/gemini-image";
 import { buildCaption, isInstagramConfigured, postToInstagram } from "@/lib/instagram";
 
 const ITEMS_PER_FEED = 3;
@@ -91,13 +92,24 @@ export async function generateDailyNews(maxPerRun = DEFAULT_MAX_PER_RUN): Promis
         continue;
       }
       const slug = await uniqueSlug(rewritten.title);
+
+      // Prefer an original AI-generated editorial image; fall back to the RSS thumbnail.
+      let imageUrl = c.item.imageUrl;
+      const aiImage = await generateAndHostArticleImage({
+        title: rewritten.title,
+        category: catBySlug.get(c.categorySlug)!.name,
+        excerpt: rewritten.excerpt,
+      });
+      if (aiImage) imageUrl = aiImage;
+      else errors.push(`image gen skipped/failed: ${c.item.title.slice(0, 50)}`);
+
       const article = await prisma.article.create({
         data: {
           title: rewritten.title,
           slug,
           content: rewritten.content,
           excerpt: rewritten.excerpt,
-          featuredImage: c.item.imageUrl,
+          featuredImage: imageUrl,
           featuredImageAlt: rewritten.title,
           status: "PUBLISHED",
           publishedAt: new Date(),
@@ -123,7 +135,7 @@ export async function generateDailyNews(maxPerRun = DEFAULT_MAX_PER_RUN): Promis
         excerpt: rewritten.excerpt,
         slug: article.slug,
         category: c.categorySlug,
-        image: c.item.imageUrl,
+        image: imageUrl,
       });
     } catch (e) {
       errors.push(`create failed: ${e instanceof Error ? e.message : "error"}`);
