@@ -24,6 +24,32 @@ Rules:
   <p>, <h2>, <strong>, <em>, <ul>, <li> tags), metaDescription (<=155 chars),
   tags (3-6 short lowercase topic tags).`;
 
+/** Generic Gemini JSON call. Returns parsed JSON of type T, or null on failure. */
+export async function geminiJson<T = unknown>(prompt: string, temperature = 0.9): Promise<T | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json", temperature },
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text: string | undefined = data?.candidates?.[0]?.content?.parts
+    ?.map((p: { text?: string }) => p.text)
+    .join("");
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 export async function rewriteArticle(input: {
   sourceTitle: string;
   sourceSummary: string;

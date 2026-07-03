@@ -22,7 +22,58 @@ function buildImagePrompt(input: { title: string; category: string; excerpt?: st
     .join(" ");
 }
 
-/** Returns a base64 data URI for the generated image, or null on failure. */
+/** Generate an image from a raw prompt. Returns a base64 data URI or null. */
+export async function generateImageDataUri(
+  prompt: string,
+  aspectRatio: "16:9" | "4:5" | "1:1" = "16:9"
+): Promise<string | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+
+  const body = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ["IMAGE"],
+      imageConfig: { aspectRatio },
+    },
+  };
+
+  try {
+    const res = await fetch(`${API}/models/${IMAGE_MODEL}:generateContent?key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    const parts = data?.candidates?.[0]?.content?.parts ?? [];
+    const img = parts.find((p: { inlineData?: { data: string; mimeType?: string } }) => p.inlineData);
+    if (!img?.inlineData?.data) return null;
+    const mime = img.inlineData.mimeType || "image/jpeg";
+    return `data:${mime};base64,${img.inlineData.data}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Generate an image from a raw prompt and upload to Cloudinary. Returns {url, publicId} or null. */
+export async function generateAndHostImage(
+  prompt: string,
+  aspectRatio: "16:9" | "4:5" | "1:1" = "4:5"
+): Promise<{ url: string; publicId: string } | null> {
+  const cloudinaryReady =
+    process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+  if (!cloudinaryReady) return null;
+  const dataUri = await generateImageDataUri(prompt, aspectRatio);
+  if (!dataUri) return null;
+  try {
+    const uploaded = await uploadImage(dataUri, "daily-news/social");
+    return { url: uploaded.url, publicId: uploaded.publicId };
+  } catch {
+    return null;
+  }
+}
+
+/** Returns a base64 data URI for a generated article header image, or null on failure. */
 export async function generateArticleImageDataUri(input: {
   title: string;
   category: string;

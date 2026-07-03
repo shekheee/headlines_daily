@@ -72,6 +72,58 @@ export async function postToInstagram(input: {
   }
 }
 
+/** Publish a multi-image carousel (2–10 images). Falls back to a single post if only one image. */
+export async function postCarouselToInstagram(input: {
+  imageUrls: string[];
+  caption: string;
+}): Promise<IgPostResult> {
+  if (!isInstagramConfigured()) {
+    return { posted: false, skipped: "Instagram not configured (IG_USER_ID / IG_ACCESS_TOKEN missing)" };
+  }
+  const urls = input.imageUrls.filter(Boolean).slice(0, 10);
+  if (urls.length === 0) return { posted: false, skipped: "No images to post" };
+  if (urls.length === 1) return postToInstagram({ imageUrl: urls[0], caption: input.caption });
+
+  const userId = process.env.IG_USER_ID!;
+  const token = process.env.IG_ACCESS_TOKEN!;
+
+  const post = async (path: string, body: Record<string, unknown>) => {
+    const res = await fetch(`${GRAPH}/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, access_token: token }),
+    });
+    return { res, data: await res.json() };
+  };
+
+  try {
+    // 1) One child container per image.
+    const childIds: string[] = [];
+    for (const url of urls) {
+      const { res, data } = await post(`${userId}/media`, { image_url: url, is_carousel_item: true });
+      if (!res.ok || !data.id) return { posted: false, error: `child: ${JSON.stringify(data).slice(0, 200)}` };
+      childIds.push(data.id);
+    }
+    // 2) Parent carousel container.
+    const parent = await post(`${userId}/media`, {
+      media_type: "CAROUSEL",
+      children: childIds.join(","),
+      caption: input.caption.slice(0, 2200),
+    });
+    if (!parent.res.ok || !parent.data.id) {
+      return { posted: false, error: `parent: ${JSON.stringify(parent.data).slice(0, 200)}` };
+    }
+    // 3) Publish.
+    const pub = await post(`${userId}/media_publish`, { creation_id: parent.data.id });
+    if (!pub.res.ok || !pub.data.id) {
+      return { posted: false, error: `publish: ${JSON.stringify(pub.data).slice(0, 200)}` };
+    }
+    return { posted: true, id: pub.data.id };
+  } catch (e) {
+    return { posted: false, error: e instanceof Error ? e.message : "unknown error" };
+  }
+}
+
 export function buildCaption(a: {
   title: string;
   excerpt: string;
