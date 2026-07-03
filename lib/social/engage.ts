@@ -3,6 +3,7 @@
 // This uses ONLY official, permitted endpoints — it never touches other accounts.
 import { prisma } from "@/lib/prisma";
 import { geminiText } from "@/lib/gemini";
+import { getAccountUsername } from "@/lib/instagram";
 
 const GRAPH = process.env.IG_GRAPH_BASE || "https://graph.facebook.com/v21.0";
 
@@ -24,8 +25,11 @@ export interface EngageResult {
   errors: string[];
 }
 
-function ourHandle(): string {
-  return (process.env.IG_BRAND_HANDLE || "yournishsuri").replace(/^@/, "").toLowerCase();
+async function ourHandle(): Promise<string> {
+  // Fetch the live username so renaming the account never breaks self-detection.
+  const live = await getAccountUsername();
+  if (live) return live.toLowerCase();
+  return (process.env.IG_BRAND_HANDLE || "").replace(/^@/, "").toLowerCase();
 }
 
 async function fetchComments(mediaId: string, token: string): Promise<IgComment[]> {
@@ -71,7 +75,7 @@ export async function engageRecentComments(opts: { withinDays?: number; maxPerPo
     return { ok: false, postsChecked: 0, commentsSeen: 0, replied: 0, errors: ["Instagram not configured"] };
   }
   const token = process.env.IG_ACCESS_TOKEN;
-  const me = ourHandle();
+  const me = await ourHandle();
 
   const since = new Date(Date.now() - withinDays * 86400_000);
   const posts = await prisma.socialPost.findMany({ where: { postedAt: { gte: since } }, orderBy: { postedAt: "desc" } });

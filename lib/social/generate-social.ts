@@ -18,7 +18,6 @@ import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
 import { primeReel, reelVideoUrl } from "@/lib/social/reel";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 
-const BRAND = process.env.IG_BRAND_HANDLE || "@yournishsuri";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
 const BRAND_TAGS = ["#news", "#indianews", "#india", "#headlinesdaily", "#dailynews", "#breakingnews"];
 
@@ -26,7 +25,7 @@ const BRAND_TAGS = ["#news", "#indianews", "#india", "#headlinesdaily", "#dailyn
 const CTAS = [
   "Do you agree? Tell us below 👇",
   "Save this to read later 🔖",
-  "Follow @" + BRAND.replace(/^@/, "") + " for daily India headlines.",
+  "Follow for daily India headlines.",
   "What's your take? 💬",
   "Tag someone who should see this.",
   "Double-tap if this matters to you.",
@@ -210,7 +209,7 @@ async function buildThemePost(theme: Theme, date: Date, style: StylePack): Promi
     const copy = await geminiJson<{ hook: string; sub: string; caption: string }>(`${theme.copyPrompt}\n\nReturn ONLY JSON: {"hook": string, "sub": string, "caption": string}`);
     const pid = await coverPublicId(theme, style);
     if (pid && copy) {
-      slideUrls = [overlayUrl(pid, { kicker: theme.kicker, hook: copy.hook, sub: copy.sub, brand: BRAND, accent })];
+      slideUrls = [overlayUrl(pid, { kicker: theme.kicker, hook: copy.hook, sub: copy.sub, accent })];
       cap = captionBody(copy.caption, 0);
     } else errors.push("motivation build failed");
   } else if (theme.style === "article-single") {
@@ -222,7 +221,7 @@ async function buildThemePost(theme: Theme, date: Date, style: StylePack): Promi
       const copy = await geminiJson<{ hook: string; sub: string; caption: string }>(`${theme.copyPrompt}\n\nARTICLE TITLE: ${a.title}\nSUMMARY: ${a.excerpt || stripHtml(a.content).slice(0, 400)}\n\nReturn ONLY JSON: {"hook": string, "sub": string, "caption": string}`);
       const pid = (await toPublicId(a.featuredImage)) || (await coverPublicId(theme, style, a.title));
       if (pid) {
-        slideUrls = [overlayUrl(pid, { kicker: theme.kicker, hook: copy?.hook || trimWords(a.title, 9), sub: copy?.sub, brand: BRAND, accent })];
+        slideUrls = [overlayUrl(pid, { kicker: theme.kicker, hook: copy?.hook || trimWords(a.title, 9), sub: copy?.sub, accent })];
         cap = captionBody(copy?.caption || a.excerpt || a.title, 0, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
       } else errors.push("article-single image failed");
     } else errors.push("no article for article-single");
@@ -233,12 +232,12 @@ async function buildThemePost(theme: Theme, date: Date, style: StylePack): Promi
       const copy = await geminiJson<{ coverHook: string; caption: string }>(`${theme.copyPrompt}\n\nHEADLINES:\n${arts.map((a, i) => `${i + 1}. ${a.title}`).join("\n")}\n\nReturn ONLY JSON: {"coverHook": string, "caption": string}`);
       const slides: string[] = [];
       const coverPid = await coverPublicId(theme, style);
-      if (coverPid) slides.push(overlayUrl(coverPid, { kicker: theme.kicker, hook: copy?.coverHook || theme.name, sub: "Swipe →", brand: BRAND, accent }));
+      if (coverPid) slides.push(overlayUrl(coverPid, { kicker: theme.kicker, hook: copy?.coverHook || theme.name, sub: "Swipe →", accent }));
       for (const a of arts) {
         const pid = await toPublicId(a.featuredImage);
         if (!pid) continue;
         usedSlugs.push(a.slug);
-        slides.push(overlayUrl(pid, { kicker: a.categoryName, hook: trimWords(a.title, 12), brand: BRAND, accent }));
+        slides.push(overlayUrl(pid, { kicker: a.categoryName, hook: trimWords(a.title, 12), accent }));
       }
       slideUrls = slides;
       cap = captionBody(copy?.caption || `${theme.name}: the stories that mattered.`, 0);
@@ -252,11 +251,11 @@ async function buildThemePost(theme: Theme, date: Date, style: StylePack): Promi
       const copy = await geminiJson<{ coverHook: string; keyPoints: string[]; caption: string }>(`${theme.copyPrompt}\n\nARTICLE TITLE: ${a.title}\nBODY: ${stripHtml(a.content).slice(0, 1200)}\n\nReturn ONLY JSON: {"coverHook": string, "keyPoints": string[], "caption": string}`);
       const slides: string[] = [];
       const coverPid = (await coverPublicId(theme, style, a.title)) || (await toPublicId(a.featuredImage));
-      if (coverPid) slides.push(overlayUrl(coverPid, { kicker: theme.kicker, hook: copy?.coverHook || trimWords(a.title, 8), sub: "Swipe →", brand: BRAND, accent }));
+      if (coverPid) slides.push(overlayUrl(coverPid, { kicker: theme.kicker, hook: copy?.coverHook || trimWords(a.title, 8), sub: "Swipe →", accent }));
       const points = (copy?.keyPoints || []).slice(0, theme.slides - 1);
       for (let i = 0; i < points.length; i++) {
         if (!coverPid) break;
-        slides.push(overlayUrl(coverPid, { kicker: `${i + 1} / ${points.length}`, hook: points[i], brand: BRAND, accent }));
+        slides.push(overlayUrl(coverPid, { kicker: `${i + 1} / ${points.length}`, hook: points[i], accent }));
       }
       slideUrls = slides;
       cap = captionBody(copy?.caption || a.excerpt || a.title, 0, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
@@ -277,7 +276,7 @@ async function buildArticlePost(a: Article, accent: string, style: StylePack, ct
     errors.push(`article post image failed: ${a.slug}`);
     return { slideUrls: [], caption: "", usedSlugs: [a.slug], errors };
   }
-  const slide = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 9), sub: copy?.sub, brand: BRAND, accent });
+  const slide = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 9), sub: copy?.sub, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
   return { slideUrls: [slide], coverUrl: slide, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug)]), usedSlugs: [a.slug], errors };
 }
@@ -293,9 +292,9 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
     errors.push(`reel image failed: ${a.slug}`);
     return { slideUrls: [], caption: "", usedSlugs: [a.slug], errors };
   }
-  const video = reelVideoUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, brand: BRAND, accent });
+  const video = reelVideoUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, accent });
   await primeReel(video); // pre-generate so IG's fetch doesn't time out
-  const cover = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, brand: BRAND, accent });
+  const cover = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
   return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
 }
@@ -304,7 +303,7 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
 async function buildStory(a: Article, accent: string): Promise<PostDraft> {
   const pid = await toPublicId(a.featuredImage);
   if (!pid) return { slideUrls: [], caption: "", usedSlugs: [], errors: ["story image failed"] };
-  const slide = overlayUrl(pid, { kicker: "NEW ON " + BRAND, hook: trimWords(a.title, 10), sub: "Read the full story — link in bio", brand: BRAND, accent });
+  const slide = overlayUrl(pid, { kicker: "IN THE NEWS", hook: trimWords(a.title, 10), sub: "Read the full story — link in bio", accent });
   return { slideUrls: [slide], caption: "", usedSlugs: [], errors: [] };
 }
 

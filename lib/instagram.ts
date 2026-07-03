@@ -236,6 +236,20 @@ export interface AccountStats {
   mediaCount: number;
 }
 
+/** The account's current username (so username changes don't break anything). */
+export async function getAccountUsername(): Promise<string | null> {
+  if (!isInstagramConfigured()) return null;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  const userId = process.env.IG_USER_ID!;
+  try {
+    const res = await fetch(`${GRAPH}/${userId}?fields=username&access_token=${token}`);
+    const data = await res.json();
+    return res.ok && data.username ? String(data.username) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Current account totals (followers / following / media count). */
 export async function getAccountStats(): Promise<AccountStats | null> {
   if (!isInstagramConfigured()) return null;
