@@ -16,7 +16,7 @@ async function getHomeData() {
     prisma.article.findMany({
       where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
       orderBy: [{ publishedAt: "desc" }],
-      take: 5,
+      take: 6,
       select: {
         id: true, title: true, slug: true, excerpt: true,
         featuredImage: true, publishedAt: true, readingTime: true, isFeatured: true,
@@ -32,7 +32,7 @@ async function getHomeData() {
         articles: {
           where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
           orderBy: { publishedAt: "desc" },
-          take: 3,
+          take: 4,
           select: {
             id: true, title: true, slug: true, excerpt: true,
             featuredImage: true, publishedAt: true, readingTime: true, isFeatured: true,
@@ -81,10 +81,10 @@ export default async function HomePage() {
         <AdSlot position="HEADER" className="mb-5" />
 
         {/* ── HERO GRID ───────────────────── */}
-        {/* Large hero on left, 4 stacked on right */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0.5 mb-7 bg-gray-200">
+        {/* Large lead story on left, stacked headlines on right */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Big hero */}
-          <div className="lg:col-span-2 bg-[#f7f7f5]">
+          <div className="lg:col-span-2">
             {hero ? (
               <ArticleCard article={hero} variant="hero" />
             ) : (
@@ -94,12 +94,10 @@ export default async function HomePage() {
             )}
           </div>
 
-          {/* Right: 2×2 grid of default cards */}
-          <div className="grid grid-cols-2 gap-0.5 bg-gray-200">
-            {topGrid.slice(0, 4).map((a) => (
-              <div key={a.id} className="bg-[#f7f7f5] p-3">
-                <ArticleCard article={a} variant="default" />
-              </div>
+          {/* Right: stacked headline list */}
+          <div className="lg:border-l lg:border-gray-200 lg:pl-6">
+            {topGrid.slice(0, 5).map((a) => (
+              <ArticleCard key={a.id} article={a} variant="compact" />
             ))}
           </div>
         </div>
@@ -128,20 +126,20 @@ export default async function HomePage() {
                   </Link>
                 </div>
 
-                {/* Layout: lead (large left) + row of smaller articles */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  {/* Lead article — larger */}
+                {/* Layout: lead feature (left) + stacked headlines (right) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {lead && (
-                    <div className="md:col-span-2">
+                    <div>
                       <ArticleCard article={lead} variant="default" />
                     </div>
                   )}
-                  {/* Rest — compact-ish */}
-                  {rest.map((a) => (
-                    <div key={a.id}>
-                      <ArticleCard article={a} variant="default" />
+                  {rest.length > 0 && (
+                    <div className="md:border-l md:border-gray-200 md:pl-6">
+                      {rest.map((a) => (
+                        <ArticleCard key={a.id} article={a} variant="compact" />
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* Inline ad every 3rd section */}
