@@ -42,7 +42,7 @@ export async function PublicFooter() {
           {/* About */}
           <div className="col-span-2 md:col-span-1">
             <p className="text-sm text-gray-500 leading-relaxed">
-              Independent India news — politics, elections, business and the stories that shape the nation.
+              Independent India news — politics, business and the stories that shape the nation.
             </p>
           </div>
 

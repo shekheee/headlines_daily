@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Lok Mandate — Independent India news & elections";
+export const alt = "Lok Mandate — Independent India news";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -44,7 +44,7 @@ export default function OpengraphImage() {
         </div>
         <div style={{ display: "flex", width: 120, height: 6, background: "#dc2626", marginTop: 44, marginBottom: 28 }} />
         <div style={{ display: "flex", fontSize: 34, color: "#c7c7cc", fontFamily: "Arial, sans-serif" }}>
-          Independent India news &amp; elections
+          Independent India news
         </div>
       </div>
     ),

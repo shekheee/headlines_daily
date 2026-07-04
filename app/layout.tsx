@@ -21,11 +21,11 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
 export const metadata: Metadata = {
   title: {
-    default: `${appName} — Independent India News & Elections`,
+    default: `${appName} — Independent India News`,
     template: `%s | ${appName}`,
   },
   description:
-    "Lok Mandate — independent India news: politics, elections, business, tech and the stories that shape the nation.",
+    "Lok Mandate — independent India news: politics, business, tech and the stories that shape the nation.",
   metadataBase: appUrl ? new URL(appUrl) : undefined,
   openGraph: {
     siteName: appName,
