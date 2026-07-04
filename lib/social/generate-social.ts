@@ -15,7 +15,7 @@ import { getAccountStats, getMediaInsights, postCarouselToInstagram, postReel, p
 import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
 import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
-import { primeReel, reelVideoUrl } from "@/lib/social/reel";
+import { buildReelVideo, primeReel } from "@/lib/social/reel";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -292,7 +292,11 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
     errors.push(`reel image failed: ${a.slug}`);
     return { slideUrls: [], caption: "", usedSlugs: [a.slug], errors };
   }
-  const video = reelVideoUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, accent });
+  const video = await buildReelVideo(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, accent });
+  if (!video) {
+    errors.push(`reel video build failed: ${a.slug}`);
+    return { slideUrls: [], caption: "", usedSlugs: [a.slug], errors };
+  }
   await primeReel(video); // pre-generate so IG's fetch doesn't time out
   const cover = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);

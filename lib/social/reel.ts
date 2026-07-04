@@ -1,7 +1,12 @@
-// Builds a 9:16 Instagram Reel (MP4) from a still image using Cloudinary's
-// server-side `e_zoompan` Ken-Burns effect + text overlays — no ffmpeg needed.
-// Reels get far more reach than static posts, so this is our top like-driver.
+// Builds a 9:16 Instagram Reel (MP4) with a Ken-Burns zooming background and
+// STATIC text — no ffmpeg needed.
+//
+// Why two steps: Cloudinary's `e_zoompan` zooms the whole layer, so text baked
+// into it scales and drifts out of frame. Instead we (1) render the zooming
+// background as a standalone video, then (2) overlay text on that VIDEO base —
+// overlays on a video stay fixed in place while the footage zooms behind them.
 import { encodeText } from "@/lib/social/overlay";
+import { cloudinary } from "@/lib/cloudinary";
 
 const CLOUD = process.env.CLOUDINARY_CLOUD_NAME || "";
 const FONT = "Arial";
@@ -10,32 +15,23 @@ export interface ReelOptions {
   kicker?: string;
   hook: string;
   sub?: string;
-  brand?: string;
   accent?: string;
   durationSec?: number;
 }
 
-/** Cloudinary delivery URL that turns `publicId` into a 9:16 zooming MP4 with text.
- *  Text is kept inside Instagram's Reel "safe zone": away from the top ~130px and
- *  the bottom ~430px (where IG overlays the caption, handle and action buttons),
- *  and with side margins, so nothing gets clipped or hidden by the UI. */
-export function reelVideoUrl(publicId: string, opts: ReelOptions): string {
+/** Step 1: a 9:16 zooming background video (no text) generated from a still. */
+function zoomBackgroundUrl(publicId: string, du: number): string {
+  return `https://res.cloudinary.com/${CLOUD}/image/upload/c_fill,w_1080,h_1920/e_zoompan:mode_ofl;maxzoom_1.3;du_${du}/e_brightness:-26/f_mp4/${publicId}`;
+}
+
+/** Step 2: text overlay transform, applied over a video normalized to 1080x1920.
+ *  Text is bottom-anchored inside IG's safe zone so nothing clips or hides. */
+function textTransform(opts: ReelOptions): string {
   const accent = opts.accent || "F5C518";
-  const du = Math.min(Math.max(opts.durationSec ?? 6, 4), 10);
-  const t: string[] = [];
-
-  // NOTE: g_auto is NOT supported with zoompan video generation (Cloudinary 500s),
-  // so use a plain center fill.
-  t.push("c_fill,w_1080,h_1920");
-  t.push(`e_zoompan:mode_ofl;maxzoom_1.3;du_${du}`);
-  t.push("e_brightness:-26");
-
-  // All text is bottom-anchored (grows upward) so it never clips off the bottom,
-  // and sits above IG's bottom UI band (~430px). Side margin 90px, width 900px.
+  const t: string[] = ["c_fill,w_1080,h_1920"]; // normalize base video to full res
   const subY = 470;
   const hookY = opts.sub ? subY + 150 : subY;
-  const kickerY = hookY + 320; // above the hook block (hook wraps upward)
-
+  const kickerY = hookY + 320;
   if (opts.kicker) {
     t.push(`co_rgb:${accent},l_text:${FONT}_46_bold_letter_spacing_2:${encodeText(opts.kicker.toUpperCase())},g_south_west,x_90,y_${kickerY}`);
   }
@@ -43,16 +39,31 @@ export function reelVideoUrl(publicId: string, opts: ReelOptions): string {
   if (opts.sub) {
     t.push(`co_rgb:e8e8e8,l_text:${FONT}_44:${encodeText(opts.sub)},w_900,c_fit,g_south_west,x_90,y_${subY}`);
   }
-  t.push("f_mp4,q_auto");
-  return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${publicId}`;
+  return t.join("/");
+}
+
+/** Build the final Reel MP4 URL (uploads the zoom background, then overlays text). */
+export async function buildReelVideo(publicId: string, opts: ReelOptions): Promise<string | null> {
+  const du = Math.min(Math.max(opts.durationSec ?? 6, 4), 10);
+  const bg = zoomBackgroundUrl(publicId, du);
+  try {
+    const up = await cloudinary.uploader.upload(bg, { resource_type: "video", folder: "daily-news/reels" });
+    return `https://res.cloudinary.com/${CLOUD}/video/upload/${textTransform(opts)}/f_mp4,q_auto/${up.public_id}.mp4`;
+  } catch {
+    return null;
+  }
 }
 
 /** Pre-generate + cache the derived video so Instagram's fetch doesn't time out. */
 export async function primeReel(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url);
-    return res.ok && (res.headers.get("content-type") || "").includes("video");
-  } catch {
-    return false;
+  for (let i = 0; i < 6; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok && (res.headers.get("content-type") || "").includes("video")) return true;
+    } catch {
+      /* retry */
+    }
+    await new Promise((r) => setTimeout(r, 3000));
   }
+  return false;
 }
