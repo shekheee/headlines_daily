@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BreakingNewsTicker } from "@/components/public/BreakingNewsTicker";
 import { LanguageSwitcher } from "@/components/public/LanguageSwitcher";
+import { BrandMark } from "@/components/public/BrandMark";
 import { Search } from "lucide-react";
 
 async function getCategories() {
@@ -14,7 +15,7 @@ async function getCategories() {
 
 export async function PublicHeader() {
   const categories = await getCategories();
-  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate";
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     year: "numeric",
@@ -28,13 +29,14 @@ export async function PublicHeader() {
       <div className="border-b border-gray-200">
         <div className="container px-4 flex items-center justify-between py-3 md:py-4">
           {/* Logo */}
-          <Link
-            href="/"
-            className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900"
-            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
-          >
-            <span className="text-red-600">{appName.slice(0, 1)}</span>
-            {appName.slice(1)}
+          <Link href="/" className="flex items-center gap-2.5" aria-label={appName}>
+            <BrandMark className="h-8 w-8 md:h-9 md:w-9" />
+            <span
+              className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900"
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
+            >
+              {appName}
+            </span>
           </Link>
 
           {/* Right: date + language + search */}

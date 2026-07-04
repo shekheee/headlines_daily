@@ -27,12 +27,12 @@ async function ensureAuthor() {
   // Keep the original email as the stable key, but present a neutral editorial identity.
   return prisma.user.upsert({
     where: { email: "newsroom-ai@dailynews.com" },
-    update: { name: "Headlines Desk", bio: "The Headlines Daily editorial desk." },
+    update: { name: "Lok Mandate Desk", bio: "The Lok Mandate editorial desk." },
     create: {
       email: "newsroom-ai@dailynews.com",
-      name: "Headlines Desk",
+      name: "Lok Mandate Desk",
       role: "EDITOR",
-      bio: "The Headlines Daily editorial desk.",
+      bio: "The Lok Mandate editorial desk.",
     },
   });
 }

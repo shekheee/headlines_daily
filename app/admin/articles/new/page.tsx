@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ArticleForm } from "../ArticleForm";
 
-export const metadata = { title: "New Article — Headlines Daily Admin" };
+export const metadata = { title: "New Article — Lok Mandate Admin" };
 
 async function getFormData() {
   const [categories, tags] = await Promise.all([

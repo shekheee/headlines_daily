@@ -16,15 +16,16 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily";
+const appName = process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate";
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
 export const metadata: Metadata = {
   title: {
-    default: appName,
+    default: `${appName} — Independent India News & Elections`,
     template: `%s | ${appName}`,
   },
-  description: "Your trusted source for headlines, breaking stories, and in-depth analysis.",
+  description:
+    "Lok Mandate — independent India news: politics, elections, business, tech and the stories that shape the nation.",
   metadataBase: appUrl ? new URL(appUrl) : undefined,
   openGraph: {
     siteName: appName,

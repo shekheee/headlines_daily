@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { BreakingNewsManager } from "./BreakingNewsManager";
 
-export const metadata = { title: "Breaking News — Headlines Daily Admin" };
+export const metadata = { title: "Breaking News — Lok Mandate Admin" };
 
 export default async function BreakingNewsPage() {
   const items = await prisma.breakingNews.findMany({ orderBy: { createdAt: "desc" } });

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { BrandMark } from "@/components/public/BrandMark";
 import { Rss } from "lucide-react";
 
 async function getFooterCategories() {
@@ -12,20 +13,21 @@ async function getFooterCategories() {
 
 export async function PublicFooter() {
   const categories = await getFooterCategories();
-  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate";
 
   return (
     <footer className="bg-[#111] text-gray-400">
       {/* Top divider with logo */}
       <div className="border-b border-gray-800">
         <div className="container px-4 py-6 max-w-7xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-2xl font-bold text-white"
-            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
-          >
-            <span className="text-red-500">{appName.slice(0, 1)}</span>
-            {appName.slice(1)}
+          <Link href="/" className="flex items-center gap-2.5" aria-label={appName}>
+            <BrandMark className="h-7 w-7" />
+            <span
+              className="text-2xl font-bold text-white"
+              style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
+            >
+              {appName}
+            </span>
           </Link>
           <Link href="/feed.xml" aria-label="RSS Feed" className="text-gray-500 hover:text-red-500 transition-colors">
             <Rss className="h-5 w-5" />
@@ -40,7 +42,7 @@ export async function PublicFooter() {
           {/* About */}
           <div className="col-span-2 md:col-span-1">
             <p className="text-sm text-gray-500 leading-relaxed">
-              Your trusted source for breaking news, in-depth analysis, and stories that matter.
+              Independent India news — politics, elections, business and the stories that shape the nation.
             </p>
           </div>
 

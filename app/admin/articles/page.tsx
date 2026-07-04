@@ -7,7 +7,7 @@ import { formatTimeAgo } from "@/lib/utils";
 import { PlusCircle } from "lucide-react";
 import { ArticlesTable } from "./ArticlesTable";
 
-export const metadata = { title: "Articles — Headlines Daily Admin" };
+export const metadata = { title: "Articles — Lok Mandate Admin" };
 
 async function getArticles() {
   return prisma.article.findMany({

@@ -1,7 +1,7 @@
 // Central SEO helpers: canonical URLs + JSON-LD builders for Organization,
 // WebSite (with sitelinks search box), NewsArticle and Breadcrumbs.
 export const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate";
 // Optional publisher logo (recommended by Google News). Set NEXT_PUBLIC_LOGO_URL
 // to a >=112px, <=60px-tall PNG for full eligibility.
 export const LOGO_URL = process.env.NEXT_PUBLIC_LOGO_URL || "";

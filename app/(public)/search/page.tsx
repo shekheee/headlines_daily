@@ -12,8 +12,8 @@ export function generateMetadata({ searchParams }: Props): Metadata {
   const q = searchParams.q?.trim();
   return {
     title: q
-      ? `Search: ${q} | ${process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily"}`
-      : `Search | ${process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily"}`,
+      ? `Search: ${q} | ${process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate"}`
+      : `Search | ${process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate"}`,
   };
 }
 

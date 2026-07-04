@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { CategoriesManager } from "./CategoriesManager";
 
-export const metadata = { title: "Categories — Headlines Daily Admin" };
+export const metadata = { title: "Categories — Lok Mandate Admin" };
 
 export default async function CategoriesPage() {
   const categories = await prisma.category.findMany({

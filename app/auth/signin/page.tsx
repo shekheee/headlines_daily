@@ -46,7 +46,7 @@ function SignInForm() {
           <div className="flex justify-center mb-2">
             <Newspaper className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Headlines Daily Admin</CardTitle>
+          <CardTitle className="text-2xl">Lok Mandate Admin</CardTitle>
           <CardDescription>Sign in to manage your news platform</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

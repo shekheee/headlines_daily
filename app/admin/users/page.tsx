@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { UsersManager } from "./UsersManager";
 
-export const metadata = { title: "Users — Headlines Daily Admin" };
+export const metadata = { title: "Users — Lok Mandate Admin" };
 
 export default async function UsersPage() {
   const session = await auth();

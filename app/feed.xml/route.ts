@@ -5,7 +5,7 @@ export const revalidate = 3600;
 
 export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://example.com";
-  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate";
 
   const articles = await prisma.article.findMany({
     where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },

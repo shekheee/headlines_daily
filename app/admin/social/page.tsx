@@ -5,7 +5,7 @@ import { buildWeeklyReport } from "@/lib/social/report";
 import { formatTimeAgo } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Instagram — Headlines Daily Admin" };
+export const metadata = { title: "Instagram — Lok Mandate Admin" };
 
 function istLabel(utcHour: number): string {
   const ist = (utcHour + 5.5) % 24;

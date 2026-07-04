@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = await getCategory(slug);
   if (!category) return { title: "Not Found" };
   return {
-    title: `${category.name} | ${process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily"}`,
+    title: `${category.name} | ${process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate"}`,
     description: category.description ?? undefined,
   };
 }

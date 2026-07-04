@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { MediaLibrary } from "./MediaLibrary";
 
-export const metadata = { title: "Media Library — Headlines Daily Admin" };
+export const metadata = { title: "Media Library — Lok Mandate Admin" };
 
 export default async function MediaPage() {
   const media = await prisma.media.findMany({

@@ -6,7 +6,7 @@ import { FileText, Eye, Clock, RadioIcon, Megaphone, Zap } from "lucide-react";
 import { formatDate, formatTimeAgo } from "@/lib/utils";
 import Link from "next/link";
 
-export const metadata = { title: "Dashboard — Headlines Daily Admin" };
+export const metadata = { title: "Dashboard — Lok Mandate Admin" };
 
 async function getDashboardData() {
   const now = new Date();

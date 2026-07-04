@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "Headlines Daily",
+  title: process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate",
   description: "Your trusted source for headlines, breaking stories, and in-depth analysis.",
 };
 

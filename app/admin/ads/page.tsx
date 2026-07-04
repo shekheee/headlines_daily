@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdsManager } from "./AdsManager";
 
-export const metadata = { title: "Ads — Headlines Daily Admin" };
+export const metadata = { title: "Ads — Lok Mandate Admin" };
 
 export default async function AdsPage() {
   const ads = await prisma.ad.findMany({ orderBy: { createdAt: "desc" } });
