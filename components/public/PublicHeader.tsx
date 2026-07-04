@@ -29,7 +29,7 @@ export async function PublicHeader() {
       <div className="border-b border-gray-200">
         <div className="container px-4 flex items-center justify-between py-3 md:py-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5" aria-label={appName}>
+          <Link href="/" className="flex items-center gap-2.5 text-gray-900" aria-label={appName}>
             <BrandMark className="h-8 w-8 md:h-9 md:w-9" />
             <span
               className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900"

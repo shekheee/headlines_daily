@@ -4,6 +4,8 @@ export const alt = "Lok Mandate — Independent India news & elections";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+const whorl = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 48 48' fill='none'><g stroke='#ffffff' stroke-width='2.7' stroke-linecap='round'><path d='M22.12 29.17 A5.5 5.5 0 1 1 25.88 29.17'/><path d='M20.58 33.40 A10 10 0 1 1 27.42 33.40'/><path d='M19.04 37.63 A14.5 14.5 0 1 1 28.96 37.63'/><path d='M17.50 41.86 A19 19 0 1 1 30.50 41.86'/><path d='M24 16.5 q4.6 2.2 2 7'/></g></svg>`;
+
 // Default social share card (used when a page has no image of its own).
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -33,16 +35,8 @@ export default function OpengraphImage() {
               borderRadius: 30,
             }}
           >
-            <svg width="86" height="86" viewBox="0 0 48 48">
-              <path
-                d="M13 25l7 7 15-16"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img width={96} height={96} src={`data:image/svg+xml,${encodeURIComponent(whorl)}`} alt="" />
           </div>
           <div style={{ display: "flex", fontSize: 108, fontWeight: 700, letterSpacing: -2 }}>
             Lok Mandate

@@ -20,7 +20,7 @@ export async function PublicFooter() {
       {/* Top divider with logo */}
       <div className="border-b border-gray-800">
         <div className="container px-4 py-6 max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5" aria-label={appName}>
+          <Link href="/" className="flex items-center gap-2.5 text-white" aria-label={appName}>
             <BrandMark className="h-7 w-7" />
             <span
               className="text-2xl font-bold text-white"
