@@ -7,6 +7,8 @@ import { ArticleCard } from "@/components/public/ArticleCard";
 import { formatDate, formatTimeAgo } from "@/lib/utils";
 import { Share2 } from "lucide-react";
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbSchema, newsArticleSchema, stripHtml } from "@/lib/seo";
 
 export const revalidate = 300; // revalidate every 5 minutes
 
@@ -33,15 +35,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const appName = process.env.NEXT_PUBLIC_APP_NAME || "Daily News";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
+  const description = article.metaDescription || article.excerpt || stripHtml(article.content, 155);
+  const keywords = article.tags.map((t) => t.name);
+
   return {
     title: article.metaTitle || `${article.title} | ${appName}`,
-    description: article.metaDescription || article.excerpt || undefined,
+    description,
+    keywords: keywords.length ? keywords : undefined,
+    authors: article.author.name ? [{ name: article.author.name }] : undefined,
     openGraph: {
       title: article.metaTitle || article.title,
-      description: article.metaDescription || article.excerpt || undefined,
+      description,
       type: "article",
       publishedTime: article.publishedAt?.toISOString(),
+      modifiedTime: (article.updatedAt || article.publishedAt)?.toISOString(),
       authors: article.author.name ? [article.author.name] : undefined,
+      section: article.category?.name || undefined,
+      tags: keywords.length ? keywords : undefined,
       images: article.featuredImage
         ? [{ url: article.featuredImage, width: 1200, height: 630, alt: article.title }]
         : undefined,
@@ -50,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: article.metaTitle || article.title,
-      description: article.metaDescription || article.excerpt || undefined,
+      description,
       images: article.featuredImage ? [article.featuredImage] : undefined,
     },
     alternates: {
@@ -89,8 +99,26 @@ export default async function ArticlePage({ params }: Props) {
   const encodedUrl = encodeURIComponent(articleUrl);
   const encodedTitle = encodeURIComponent(article.title);
 
+  const articleLd = newsArticleSchema({
+    title: article.title,
+    slug: article.slug,
+    description: article.metaDescription || article.excerpt || stripHtml(article.content, 155),
+    image: article.featuredImage,
+    publishedAt: article.publishedAt,
+    updatedAt: article.updatedAt,
+    authorName: article.author.name,
+    section: article.category?.name,
+    keywords: article.tags.map((t) => t.name),
+  });
+  const crumbs = breadcrumbSchema([
+    { name: "Home", url: "/" },
+    ...(article.category ? [{ name: article.category.name, url: `/category/${article.category.slug}` }] : []),
+    { name: article.title, url: `/articles/${article.slug}` },
+  ]);
+
   return (
     <div className="bg-[#f7f7f5] min-h-screen">
+      <JsonLd data={[articleLd, crumbs]} />
       <div className="container px-4 py-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
 
