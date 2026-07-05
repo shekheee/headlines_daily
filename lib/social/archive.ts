@@ -24,25 +24,29 @@ export function pickFlavor(date = new Date()): ArchiveFlavor {
   return FLAVORS[doy % FLAVORS.length];
 }
 
-function briefFor(flavor: ArchiveFlavor, date: Date): { kicker: string; instruction: string; tags: string[] } {
-  const dstr = date.toLocaleDateString("en-IN", { day: "numeric", month: "long" });
+function briefFor(flavor: ArchiveFlavor, date: Date): { kicker: string; instruction: string; dateRule: string; tags: string[] } {
+  const dstr = date.toLocaleDateString("en-IN", { day: "numeric", month: "long" }); // e.g. "5 July"
   switch (flavor) {
     case "onthisday":
       return {
-        kicker: "ON THIS DAY",
-        instruction: `Pick ONE genuinely notable, well-documented event from Indian history that happened on ${dstr} (in any year). It must be widely reported and easy to verify.`,
+        kicker: `ON THIS DAY, ${dstr.toUpperCase()}`,
+        instruction: `Pick ONE genuinely notable, well-documented event from Indian history that happened on ${dstr} (in any year). The event MUST have occurred on ${dstr} — if you are unsure of the exact date, choose a different, clearly-dated event. It must be widely reported and easy to verify.`,
+        // Anchor the story to today's date so viewers can correlate it.
+        dateRule: `Begin the caption with the exact date, e.g. "On ${dstr} {year}, ...". The "year" field must be the accurate year of the event.`,
         tags: ["#onthisday", "#indianhistory", "#history", "#didyouknow"],
       };
     case "political":
       return {
         kicker: "FROM THE ARCHIVES",
         instruction: `Pick ONE fascinating, well-documented moment from India's political history — a landmark court verdict, a famous scandal, a historic election, or a pivotal national decision. It must be widely reported and verifiable. Keep it strictly non-partisan.`,
+        dateRule: `Begin the caption by stating when it happened (month and year, e.g. "In March 1977, ..."). The "year" field must be accurate.`,
         tags: ["#indianpolitics", "#politicalhistory", "#history", "#india"],
       };
     case "world":
       return {
         kicker: "WORLD REWIND",
         instruction: `Pick ONE major, well-documented event from world history that had a real connection to, or impact on, India. It must be widely reported and verifiable.`,
+        dateRule: `Begin the caption by stating the year it happened (e.g. "In 1971, ..."). The "year" field must be accurate.`,
         tags: ["#worldhistory", "#history", "#india", "#didyouknow"],
       };
   }
@@ -54,7 +58,7 @@ function briefFor(flavor: ArchiveFlavor, date: Date): { kicker: string; instruct
  */
 export async function getArchiveStory(date = new Date()): Promise<ArchiveStory | null> {
   const flavor = pickFlavor(date);
-  const { kicker, instruction, tags } = briefFor(flavor, date);
+  const { kicker, instruction, dateRule, tags } = briefFor(flavor, date);
 
   const data = await geminiJson<{
     title: string;
@@ -70,6 +74,7 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
       `- Use ONLY well-documented, verifiable facts. NEVER invent events, dates, names, numbers, or quotes.\n` +
       `- If you are unsure about ANY detail, pick a more famous, clearly-documented event instead.\n` +
       `- Neutral, non-partisan, respectful tone. No opinions, no speculation, no sensational claims you can't back up.\n` +
+      `- ${dateRule}\n` +
       `- Vivid and engaging for Instagram, but accuracy comes first.\n\n` +
       `Return ONLY JSON: {"title": short title, "year": "YYYY", "hook": scroll-stopping cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence story, "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
     0.6
@@ -78,11 +83,14 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
   if (!data || !data.hook || !data.caption || !data.imagePrompt) return null;
   if ((data.confidence || "").toLowerCase() === "low") return null;
 
-  const yr = data.year ? ` · ${data.year}` : "";
+  // Surface the event's year on the overlay so the "then" is unmistakable.
+  const year = (data.year || "").trim();
+  const baseSub = (data.sub || data.title || "").trim();
+  const sub = year ? (baseSub ? `${year}: ${baseSub}` : year) : baseSub;
   return {
     kicker,
     hook: data.hook,
-    sub: data.sub || (data.title ? `${data.title}${yr}` : ""),
+    sub: sub.slice(0, 80),
     caption: data.caption,
     imagePrompt: data.imagePrompt,
     hashtags: tags,
