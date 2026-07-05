@@ -106,3 +106,30 @@ export function overlayUrl(publicId: string, opts: OverlayOptions): string {
   t.push("f_jpg,q_auto");
   return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${publicId}`;
 }
+
+// 9:16 canvas for Reel scene stills (Cloudinary bakes the caption; ffmpeg then
+// adds motion + audio). Text sits in the lower third, inside a zoom-safe zone.
+const RW = 1080;
+const RH = 1920;
+
+/**
+ * Build a 9:16 captioned scene still: the image cropped/darkened with a single
+ * caption (bottom, wrapped) and an optional accent kicker beneath it.
+ */
+export function sceneStillUrl(
+  publicId: string,
+  opts: { caption: string; kicker?: string; accent?: string }
+): string {
+  const accent = opts.accent || "F5C518";
+  const t: string[] = [`c_fill,g_auto,w_${RW},h_${RH}`, "e_brightness:-30"];
+  t.push(
+    `co_white,l_text:${FONT}_70_bold_line_spacing_-4:${encodeText(opts.caption)},w_920,c_fit,g_south_west,x_80,y_520`
+  );
+  if (opts.kicker) {
+    t.push(
+      `co_rgb:${accent},l_text:${FONT}_44_bold_letter_spacing_2:${encodeText(opts.kicker.toUpperCase())},g_south_west,x_82,y_430`
+    );
+  }
+  t.push("f_jpg,q_auto");
+  return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${publicId}`;
+}

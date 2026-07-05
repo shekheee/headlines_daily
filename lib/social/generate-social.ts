@@ -10,16 +10,17 @@
 import slugify from "slugify";
 import { prisma } from "@/lib/prisma";
 import { estimateReadingTime } from "@/lib/utils";
-import { uploadImage } from "@/lib/cloudinary";
+import { uploadImage, cloudinary } from "@/lib/cloudinary";
 import { geminiJson } from "@/lib/gemini";
 import { generateAndHostImage } from "@/lib/gemini-image";
 import { getAccountStats, getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
 import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
-import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
-import { buildReelVideo, buildNarratedReel, primeReel } from "@/lib/social/reel";
+import { overlayUrl, sceneStillUrl, publicIdFromUrl } from "@/lib/social/overlay";
+import { buildReelVideo, primeReel } from "@/lib/social/reel";
 import { getArchiveStory } from "@/lib/social/archive";
 import { synthesizeNarration } from "@/lib/social/tts";
+import { renderNarratedReel } from "@/lib/social/ffmpeg-reel";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -357,46 +358,76 @@ async function publishArchiveArticle(story: { title: string; body: string; metaD
 }
 
 // ── Evergreen "story from the past" Reel (growth pillar) ─────────────────────
+async function uploadReelFile(path: string): Promise<string | null> {
+  try {
+    const up = await cloudinary.uploader.upload(path, { resource_type: "video", folder: "daily-news/reels" });
+    return up.secure_url || null;
+  } catch {
+    return null;
+  }
+}
+
 async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date): Promise<{ draft: PostDraft; label: string }> {
   const story = await getArchiveStory(date);
   if (!story) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["no archive story"] }, label: "From the Archives" };
-  const img = await generateAndHostImage(`${story.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5");
-  if (!img?.publicId) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
-  const pid = img.publicId;
 
-  // Voiceover storytelling: narrate the story and build a reel with synced
-  // subtitles. Falls back to a silent hook/sub reel if TTS is unavailable.
-  let video: string | null = null;
-  const narrationScript = story.narration.join(" ");
-  const voice = await synthesizeNarration(narrationScript, { voiceSeed: Math.floor(date.getTime() / 86_400_000) });
-  if (voice) {
-    video = await buildNarratedReel(pid, {
-      kicker: story.kicker,
-      lines: story.narration,
-      audioPublicId: voice.publicId,
-      durationSec: voice.durationSec,
-      accent,
-    });
+  // One DISTINCT image per story beat. Generated sequentially — firing all of
+  // them at once trips the image model's rate limit and they all fail.
+  const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
+  for (const s of story.scenes) {
+    const img = await generateAndHostImage(`${s.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5");
+    if (img?.publicId) beats.push({ caption: s.text, img });
   }
-  if (!video) {
-    video = await buildReelVideo(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
-  }
-  if (!video) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive reel build failed"] }, label: story.kicker };
-  await primeReel(video);
+  if (!beats.length) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
+  const coverImg = beats[0].img;
 
   // Publish the longer read on the website and link to it in the caption.
-  const slug = await publishArchiveArticle(story, img.url);
+  const slug = await publishArchiveArticle(story, coverImg.url);
   const link = slug && APP_URL ? `${APP_URL}/articles/${slug}` : undefined;
-
-  const cover = overlayUrl(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
   const cap = captionBody(story.caption, ctaSeed, link);
+  const firstComment = hashtagComment([...BRAND_TAGS, ...story.hashtags, "#reels", "#reelsindia"]);
+
+  // Storytelling reel: young-Indian-woman voiceover + one image per beat with
+  // its own caption, assembled by ffmpeg. Falls back to a silent single-image
+  // reel if the voiceover or ffmpeg assembly is unavailable.
+  const voice = await synthesizeNarration(beats.map((b) => b.caption).join(" "), {
+    voiceSeed: Math.floor(date.getTime() / 86_400_000),
+  });
+  if (voice && beats.length >= 2) {
+    const stillUrls = beats.map((b) => sceneStillUrl(b.img.publicId, { caption: b.caption, kicker: story.kicker, accent }));
+    const rendered = await renderNarratedReel({ stillUrls, audioUrl: voice.url, weights: beats.map((b) => b.caption.length) });
+    if (rendered) {
+      const hosted = await uploadReelFile(rendered.path);
+      await rendered.cleanup();
+      if (hosted) {
+        await primeReel(hosted);
+        return {
+          draft: {
+            slideUrls: [],
+            videoUrl: hosted,
+            coverUrl: stillUrls[0],
+            caption: cap,
+            firstComment,
+            usedSlugs: [],
+            errors: [],
+          },
+          label: story.kicker,
+        };
+      }
+    }
+  }
+
+  // Fallback: silent single-image reel.
+  const video = await buildReelVideo(coverImg.publicId, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
+  if (!video) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive reel build failed"] }, label: story.kicker };
+  await primeReel(video);
   return {
     draft: {
       slideUrls: [],
       videoUrl: video,
-      coverUrl: cover,
+      coverUrl: overlayUrl(coverImg.publicId, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent }),
       caption: cap,
-      firstComment: hashtagComment([...BRAND_TAGS, ...story.hashtags, "#reels", "#reelsindia"]),
+      firstComment,
       usedSlugs: [],
       errors: [],
     },

@@ -44,7 +44,7 @@ function pickVoice(seed: number): string {
 export async function synthesizeNarration(
   script: string,
   opts: { voiceSeed?: number } = {}
-): Promise<{ publicId: string; durationSec: number; voice: string } | null> {
+): Promise<{ publicId: string; durationSec: number; voice: string; url: string } | null> {
   const key = process.env.GEMINI_API_KEY;
   const cloudinaryReady =
     process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
@@ -85,7 +85,9 @@ export async function synthesizeNarration(
             resource_type: "video",
             folder: "daily-news/tts",
           });
-          return { publicId: up.public_id, durationSec: up.duration || 8, voice };
+          const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+          const url = up.secure_url || `https://res.cloudinary.com/${cloud}/video/upload/${up.public_id}.mp3`;
+          return { publicId: up.public_id, durationSec: up.duration || 8, voice, url };
         }
       }
     } catch {

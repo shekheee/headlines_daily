@@ -17,9 +17,11 @@ export interface ArchiveStory {
   title: string;
   body: string; // HTML (<p>/<h2>)
   metaDescription: string;
-  // For the narrated storytelling reel: short spoken lines (also used as
-  // time-synced subtitles). Joined together they form the voiceover script.
+  // For the narrated storytelling reel: ordered beats. Each beat's text is a
+  // spoken line (also the on-screen caption for that scene); its imagePrompt is
+  // a DISTINCT visual for that beat. narration = scenes.map(s => s.text).
   narration: string[];
+  scenes: { text: string; imagePrompt: string }[];
 }
 
 const FLAVORS: ArchiveFlavor[] = ["onthisday", "political", "world"];
@@ -78,7 +80,7 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
     caption: string;
     body: string;
     metaDescription: string;
-    narration: string[];
+    scenes: { text: string; image: string }[];
     imagePrompt: string;
     confidence: string;
   }>(
@@ -89,20 +91,26 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
       `- Neutral, non-partisan, respectful tone. No opinions, no speculation, no sensational claims you can't back up.\n` +
       `- ${dateRule}\n` +
       `- The "body" is a longer read for a news website: 5-7 short paragraphs (~550-750 words) of clean HTML using only <p> tags (an optional <h2> subhead is fine). Cover the background, what happened, the key figures, and why it still matters today. Do NOT pad with invented specifics.\n` +
-      `- The "narration" is the spoken voiceover for a short video: 4-6 punchy, conversational sentences that TELL the story with a strong hook first and a satisfying close. Each sentence max ~14 words, plain spoken English, no hashtags, no labels, no emojis. It doubles as on-screen subtitles.\n` +
+      `- The "scenes" are 4-6 beats of a short narrated video. Each beat has: "text" = ONE punchy spoken sentence (max ~14 words, plain spoken English, no hashtags/labels/emojis) that TELLS the story (strong hook first, satisfying close); and "image" = a short vivid description of a DISTINCT photorealistic scene illustrating THAT beat (no text, no logos, no watermark; do NOT depict real identifiable public figures — use anonymous or symbolic scenes). Together the sentences are the voiceover + subtitles.\n` +
       `- Vivid and engaging, but accuracy comes first.\n\n` +
-      `Return ONLY JSON: {"title": headline for the article (max 90 chars), "year": "YYYY", "hook": scroll-stopping reel cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence Instagram caption, "body": "<p>...</p>", "metaDescription": max 155 chars, "narration": ["sentence 1", "sentence 2", ...], "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
+      `Return ONLY JSON: {"title": headline for the article (max 90 chars), "year": "YYYY", "hook": scroll-stopping reel cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence Instagram caption, "body": "<p>...</p>", "metaDescription": max 155 chars, "scenes": [{"text": "spoken sentence", "image": "distinct scene description"}], "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
     0.6
   );
 
   if (!data || !data.hook || !data.caption || !data.imagePrompt || !data.body || !data.title) return null;
   if ((data.confidence || "").toLowerCase() === "low") return null;
 
-  // Narration lines (fallback: split the caption into sentences).
-  const narration = (Array.isArray(data.narration) && data.narration.length ? data.narration : splitSentences(data.caption))
-    .map((s) => (s || "").trim())
-    .filter(Boolean)
+  // Scene beats (fallback: split the caption into sentences, reusing the main image).
+  const rawScenes =
+    Array.isArray(data.scenes) && data.scenes.length
+      ? data.scenes
+      : splitSentences(data.caption).map((t) => ({ text: t, image: data.imagePrompt }));
+  const scenes = rawScenes
+    .map((s) => ({ text: (s.text || "").trim(), imagePrompt: (s.image || data.imagePrompt || "").trim() }))
+    .filter((s) => s.text && s.imagePrompt)
     .slice(0, 6);
+  if (!scenes.length) return null;
+  const narration = scenes.map((s) => s.text);
 
   const year = (data.year || "").trim();
   // Put the FULL date on the overlay: today's day+month for "On This Day", plus
@@ -124,6 +132,7 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
     body: data.body,
     metaDescription: data.metaDescription || data.caption,
     narration,
+    scenes,
   };
 }
 
