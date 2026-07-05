@@ -16,6 +16,7 @@ import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
 import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
 import { buildReelVideo, primeReel } from "@/lib/social/reel";
+import { getArchiveStory } from "@/lib/social/archive";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -303,6 +304,31 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
   return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
 }
 
+// ── Evergreen "story from the past" Reel (growth pillar) ─────────────────────
+async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date): Promise<{ draft: PostDraft; label: string }> {
+  const story = await getArchiveStory(date);
+  if (!story) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["no archive story"] }, label: "From the Archives" };
+  const pid = (await generateAndHostImage(`${story.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5"))?.publicId;
+  if (!pid) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
+  const video = await buildReelVideo(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
+  if (!video) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive reel build failed"] }, label: story.kicker };
+  await primeReel(video);
+  const cover = overlayUrl(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
+  const cap = captionBody(story.caption, ctaSeed);
+  return {
+    draft: {
+      slideUrls: [],
+      videoUrl: video,
+      coverUrl: cover,
+      caption: cap,
+      firstComment: hashtagComment([...BRAND_TAGS, ...story.hashtags, "#reels", "#reelsindia"]),
+      usedSlugs: [],
+      errors: [],
+    },
+    label: story.kicker,
+  };
+}
+
 // ── Story teaser (plain image; API can't do poll/link stickers) ──────────────
 async function buildStory(a: Article, accent: string): Promise<PostDraft> {
   const pid = await toPublicId(a.featuredImage);
@@ -411,6 +437,15 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
   const resolved = action || slotForHour(date.getUTCHours());
 
   if (resolved === "theme") return generateSocialPost(date, { ...opts, alsoStory: true });
+
+  // Reels lead with an evergreen "story from the past" (best for reach/saves).
+  // If that can't be produced, fall through to a news-derived reel.
+  if (resolved === "reel") {
+    const archive = await buildArchiveReel(accentFor(style, 1, date), style, 1, date);
+    if (archive.draft.videoUrl) {
+      return finalize(archive.label, "reel", "archive", archive.draft, { style: style.name, alsoStory: true }, opts.dryRun);
+    }
+  }
 
   const candidates = await fetchUnposted(6, 3);
   const a = candidates[0];
