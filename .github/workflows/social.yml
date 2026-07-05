@@ -39,6 +39,21 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npx prisma generate
+      # Pick the post type from the *cron expression that triggered this run*,
+      # not the actual clock time — GitHub schedules routinely run 30–90 min
+      # late, which used to make the delayed 06:00 "reel" slot post an article.
+      - name: Pick post type
+        id: pick
+        run: |
+          case "${{ github.event.schedule }}" in
+            "30 2 * * *")  action=theme ;;
+            "0 6 * * *")   action=reel ;;
+            "30 15 * * *") action=story ;;
+            *)             action=article ;;
+          esac
+          if [ -n "${{ github.event.inputs.action }}" ]; then action="${{ github.event.inputs.action }}"; fi
+          echo "action=$action" >> "$GITHUB_OUTPUT"
+          echo "Selected SOCIAL_ACTION=$action (schedule='${{ github.event.schedule }}')"
       - name: Post one Instagram item
         run: npx tsx scripts/social-slot.ts
         env:
@@ -56,4 +71,4 @@ jobs:
           IG_GRAPH_BASE: ${{ secrets.IG_GRAPH_BASE }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
-          SOCIAL_ACTION: ${{ github.event.inputs.action }}
+          SOCIAL_ACTION: ${{ steps.pick.outputs.action }}

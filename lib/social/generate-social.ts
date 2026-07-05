@@ -432,7 +432,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
 /** Map a UTC hour to a post type across the Indian day (IST = UTC+5:30). */
 function slotForHour(utcHour: number): string {
   if (utcHour < 4) return "theme"; // ~7:30-9:30 IST morning
-  if (utcHour < 7) return "reel"; // ~10:30 IST
+  if (utcHour < 8) return "reel"; // ~10:30-13:00 IST (wide, since cron can run late)
   if (utcHour < 14) return "article"; // ~13:30 IST midday
   return "story"; // ~21:00 IST night (+ articles below)
 }
