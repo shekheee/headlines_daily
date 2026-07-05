@@ -54,6 +54,56 @@ export async function buildReelVideo(publicId: string, opts: ReelOptions): Promi
   }
 }
 
+export interface NarratedReelOptions {
+  kicker?: string; // small persistent label, e.g. "ON THIS DAY, 5 JULY 1947"
+  lines: string[]; // narration split into subtitle lines (shown in sync)
+  audioPublicId: string; // Cloudinary public_id of the voiceover (video resource)
+  durationSec: number; // narration duration
+  accent?: string;
+}
+
+/**
+ * Build a NARRATED storytelling reel: a Ken-Burns image with a spoken voiceover
+ * and time-synced subtitles. The subtitles appear one after another, each shown
+ * for a slice of the narration proportional to its length. Returns the MP4 URL.
+ */
+export async function buildNarratedReel(publicId: string, opts: NarratedReelOptions): Promise<string | null> {
+  const lines = opts.lines.map((l) => l.trim()).filter(Boolean);
+  const D = Math.max(opts.durationSec, 3);
+  const du = Math.ceil(D + 0.6); // small tail so audio isn't clipped
+  const accent = opts.accent || "F5C518";
+
+  try {
+    const bgUrl = zoomBackgroundUrl(publicId, du);
+    const bg = await cloudinary.uploader.upload(bgUrl, { resource_type: "video", folder: "daily-news/reels" });
+
+    const t: string[] = ["c_fill,w_1080,h_1920"];
+    if (opts.kicker) {
+      t.push(
+        `co_rgb:${accent},l_text:${FONT}_46_bold_letter_spacing_2:${encodeText(opts.kicker.toUpperCase())},g_south_west,x_90,y_820`
+      );
+    }
+    // Time-sync subtitles proportional to each line's character length.
+    const totalChars = lines.reduce((n, l) => n + l.length, 0) || 1;
+    let acc = 0;
+    for (const line of lines) {
+      const seg = (line.length / totalChars) * D;
+      const so = acc.toFixed(2);
+      const eo = Math.min(acc + seg + 0.35, du).toFixed(2);
+      acc += seg;
+      t.push(
+        `co_white,l_text:${FONT}_72_bold_line_spacing_-4:${encodeText(line)},w_900,c_fit/fl_layer_apply,g_south_west,x_90,y_360,so_${so},eo_${eo}`
+      );
+    }
+    // Mux the voiceover onto the video.
+    t.push(`l_audio:${opts.audioPublicId.replace(/\//g, ":")}/fl_layer_apply`);
+
+    return `https://res.cloudinary.com/${CLOUD}/video/upload/${t.join("/")}/f_mp4,q_auto/${bg.public_id}.mp4`;
+  } catch {
+    return null;
+  }
+}
+
 /** Pre-generate + cache the derived video so Instagram's fetch doesn't time out. */
 export async function primeReel(url: string): Promise<boolean> {
   for (let i = 0; i < 6; i++) {

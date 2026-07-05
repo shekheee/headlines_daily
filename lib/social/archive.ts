@@ -17,6 +17,9 @@ export interface ArchiveStory {
   title: string;
   body: string; // HTML (<p>/<h2>)
   metaDescription: string;
+  // For the narrated storytelling reel: short spoken lines (also used as
+  // time-synced subtitles). Joined together they form the voiceover script.
+  narration: string[];
 }
 
 const FLAVORS: ArchiveFlavor[] = ["onthisday", "political", "world"];
@@ -75,6 +78,7 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
     caption: string;
     body: string;
     metaDescription: string;
+    narration: string[];
     imagePrompt: string;
     confidence: string;
   }>(
@@ -85,13 +89,20 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
       `- Neutral, non-partisan, respectful tone. No opinions, no speculation, no sensational claims you can't back up.\n` +
       `- ${dateRule}\n` +
       `- The "body" is a longer read for a news website: 5-7 short paragraphs (~550-750 words) of clean HTML using only <p> tags (an optional <h2> subhead is fine). Cover the background, what happened, the key figures, and why it still matters today. Do NOT pad with invented specifics.\n` +
+      `- The "narration" is the spoken voiceover for a short video: 4-6 punchy, conversational sentences that TELL the story with a strong hook first and a satisfying close. Each sentence max ~14 words, plain spoken English, no hashtags, no labels, no emojis. It doubles as on-screen subtitles.\n` +
       `- Vivid and engaging, but accuracy comes first.\n\n` +
-      `Return ONLY JSON: {"title": headline for the article (max 90 chars), "year": "YYYY", "hook": scroll-stopping reel cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence Instagram caption, "body": "<p>...</p>", "metaDescription": max 155 chars, "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
+      `Return ONLY JSON: {"title": headline for the article (max 90 chars), "year": "YYYY", "hook": scroll-stopping reel cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence Instagram caption, "body": "<p>...</p>", "metaDescription": max 155 chars, "narration": ["sentence 1", "sentence 2", ...], "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
     0.6
   );
 
   if (!data || !data.hook || !data.caption || !data.imagePrompt || !data.body || !data.title) return null;
   if ((data.confidence || "").toLowerCase() === "low") return null;
+
+  // Narration lines (fallback: split the caption into sentences).
+  const narration = (Array.isArray(data.narration) && data.narration.length ? data.narration : splitSentences(data.caption))
+    .map((s) => (s || "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
 
   const year = (data.year || "").trim();
   // Put the FULL date on the overlay: today's day+month for "On This Day", plus
@@ -112,5 +123,15 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
     title: data.title,
     body: data.body,
     metaDescription: data.metaDescription || data.caption,
+    narration,
   };
+}
+
+/** Rough sentence splitter for narration fallback. */
+function splitSentences(text: string): string[] {
+  return (text || "")
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }

@@ -17,8 +17,9 @@ import { getAccountStats, getMediaInsights, postCarouselToInstagram, postReel, p
 import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
 import { overlayUrl, publicIdFromUrl } from "@/lib/social/overlay";
-import { buildReelVideo, primeReel } from "@/lib/social/reel";
+import { buildReelVideo, buildNarratedReel, primeReel } from "@/lib/social/reel";
 import { getArchiveStory } from "@/lib/social/archive";
+import { synthesizeNarration } from "@/lib/social/tts";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -362,7 +363,24 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   const img = await generateAndHostImage(`${story.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5");
   if (!img?.publicId) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
   const pid = img.publicId;
-  const video = await buildReelVideo(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
+
+  // Voiceover storytelling: narrate the story and build a reel with synced
+  // subtitles. Falls back to a silent hook/sub reel if TTS is unavailable.
+  let video: string | null = null;
+  const narrationScript = story.narration.join(" ");
+  const voice = await synthesizeNarration(narrationScript, { voiceSeed: Math.floor(date.getTime() / 86_400_000) });
+  if (voice) {
+    video = await buildNarratedReel(pid, {
+      kicker: story.kicker,
+      lines: story.narration,
+      audioPublicId: voice.publicId,
+      durationSec: voice.durationSec,
+      accent,
+    });
+  }
+  if (!video) {
+    video = await buildReelVideo(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
+  }
   if (!video) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive reel build failed"] }, label: story.kicker };
   await primeReel(video);
 
