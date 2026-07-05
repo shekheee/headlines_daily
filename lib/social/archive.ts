@@ -22,6 +22,10 @@ export interface ArchiveStory {
   // a DISTINCT visual for that beat. narration = scenes.map(s => s.text).
   narration: string[];
   scenes: { text: string; imagePrompt: string }[];
+  // Period-accurate visual description of the main historical figure(s), so
+  // every scene can depict them consistently (empty if the event has no clear
+  // human protagonist).
+  protagonist: string;
 }
 
 const FLAVORS: ArchiveFlavor[] = ["onthisday", "political", "world"];
@@ -81,6 +85,7 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
     body: string;
     metaDescription: string;
     scenes: { text: string; image: string }[];
+    protagonist: string;
     imagePrompt: string;
     confidence: string;
   }>(
@@ -91,9 +96,11 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
       `- Neutral, non-partisan, respectful tone. No opinions, no speculation, no sensational claims you can't back up.\n` +
       `- ${dateRule}\n` +
       `- The "body" is a longer read for a news website: 5-7 short paragraphs (~550-750 words) of clean HTML using only <p> tags (an optional <h2> subhead is fine). Cover the background, what happened, the key figures, and why it still matters today. Do NOT pad with invented specifics.\n` +
-      `- The "scenes" are 4-6 beats of a short narrated video. Each beat has: "text" = ONE punchy spoken sentence (max ~14 words, plain spoken English, no hashtags/labels/emojis) that TELLS the story (strong hook first, satisfying close); and "image" = a short vivid description of a DISTINCT photorealistic scene illustrating THAT beat (no text, no logos, no watermark; do NOT depict real identifiable public figures — use anonymous or symbolic scenes). Together the sentences are the voiceover + subtitles.\n` +
-      `- Vivid and engaging, but accuracy comes first.\n\n` +
-      `Return ONLY JSON: {"title": headline for the article (max 90 chars), "year": "YYYY", "hook": scroll-stopping reel cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence Instagram caption, "body": "<p>...</p>", "metaDescription": max 155 chars, "scenes": [{"text": "spoken sentence", "image": "distinct scene description"}], "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
+      `- TELL IT AS A STORY, not a list of facts. Build a clear narrative arc: set the scene, introduce the MAIN PERSON by name, raise the stakes/tension, hit the turning point, then land a satisfying resolution and why it still matters. It must feel COMPLETE — never cut off mid-thought.\n` +
+      `- "protagonist": the central historical figure of the story, described period-accurately for an artist (full name, era, clothing, distinctive features) — e.g. "Subhas Chandra Bose, 1940s, round spectacles, military cap and uniform". Use "" only if the event genuinely has no single human protagonist.\n` +
+      `- The "scenes" are 5-6 beats of that story. Each beat has: "text" = ONE vivid spoken sentence (max ~15 words, warm spoken-storyteller English, no hashtags/labels/emojis); and "image" = a short description of a DISTINCT, photorealistic, PERIOD-ACCURATE scene for THAT beat. This is documented history — where the protagonist is involved, DEPICT them (name them in the image description and keep their appearance consistent across scenes); audiences expect to SEE the main character. No text, no logos, no watermarks. (Do NOT depict present-day living politicians.)\n` +
+      `- Vivid and cinematic, but accuracy comes first.\n\n` +
+      `Return ONLY JSON: {"title": headline for the article (max 90 chars), "year": "YYYY", "hook": scroll-stopping reel cover line max 8 words, "sub": max 10 words, "caption": 2-4 sentence Instagram caption, "body": "<p>...</p>", "metaDescription": max 155 chars, "protagonist": "period-accurate description of the main figure or \\"\\"", "scenes": [{"text": "spoken sentence", "image": "distinct period-accurate scene, depicting the protagonist where relevant"}], "imagePrompt": "a photorealistic editorial scene illustrating the event, no text, no logos, no watermark", "confidence": "high" | "medium" | "low"}`,
     0.6
   );
 
@@ -133,6 +140,7 @@ export async function getArchiveStory(date = new Date()): Promise<ArchiveStory |
     metaDescription: data.metaDescription || data.caption,
     narration,
     scenes,
+    protagonist: (data.protagonist || "").trim(),
   };
 }
 

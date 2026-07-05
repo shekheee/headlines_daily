@@ -371,11 +371,17 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   const story = await getArchiveStory(date);
   if (!story) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["no archive story"] }, label: "From the Archives" };
 
+  // Cinematic, period-accurate look for history (NOT the rotating neon style),
+  // with a consistent description of the main figure so they're recognisable.
+  const HISTORY_STYLE =
+    "Cinematic, photorealistic, period-accurate archival documentary photography; dramatic natural lighting, filmic warm tones, shallow depth of field.";
+  const who = story.protagonist ? ` The main figure is ${story.protagonist}; keep their appearance consistent and recognisable.` : "";
+
   // One DISTINCT image per story beat. Generated sequentially — firing all of
   // them at once trips the image model's rate limit and they all fail.
   const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
   for (const s of story.scenes) {
-    const img = await generateAndHostImage(`${s.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5");
+    const img = await generateAndHostImage(`${s.imagePrompt}.${who} ${HISTORY_STYLE} No text, no logos, no watermark.`, "4:5");
     if (img?.publicId) beats.push({ caption: s.text, img });
   }
   if (!beats.length) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
