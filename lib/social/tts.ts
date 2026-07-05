@@ -9,9 +9,10 @@ import { cloudinary } from "@/lib/cloudinary";
 const API = "https://generativelanguage.googleapis.com/v1beta";
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
 
-// Warm, expressive narrator voices. Rotated for variety unless GEMINI_TTS_VOICE
-// pins a specific one. (Prebuilt Gemini voices.)
-const NARRATOR_VOICES = ["Charon", "Enceladus", "Algieba", "Sulafat", "Iapetus"];
+// Young, warm FEMALE narrator voices (prebuilt Gemini voices). Rotated for
+// variety unless GEMINI_TTS_VOICE pins a specific one. The Indian-English accent
+// itself is steered via the prompt below.
+const NARRATOR_VOICES = ["Leda", "Achernar", "Sulafat", "Aoede", "Vindemiatrix", "Kore"];
 
 function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
   const h = Buffer.alloc(44);
@@ -51,9 +52,10 @@ export async function synthesizeNarration(
 
   const voice = pickVoice(opts.voiceSeed ?? 0);
   const prompt =
-    "Narrate this like a captivating history storyteller for a short video — warm, " +
-    "vivid and human, with natural dramatic pauses. Do not read any labels or hashtags, " +
-    "just tell the story:\n\n" +
+    "You are a young Indian woman narrating a short video. Speak in natural Indian English " +
+    "with a clear, authentic Indian accent — warm, friendly and expressive, like a relatable " +
+    "girl telling a captivating story to a friend. Keep it vivid and human, with natural " +
+    "dramatic pauses. Do not read any labels or hashtags, just tell the story:\n\n" +
     script;
 
   // The preview TTS model is occasionally flaky/rate-limited, so retry a few times.
