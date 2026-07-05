@@ -7,7 +7,9 @@
 //  - Story teasers
 //  - Every post is logged to SocialPost so the insights loop can learn what works
 //  - Posts can be fired one-at-a-time across IST peak times (runSocialSlot)
+import slugify from "slugify";
 import { prisma } from "@/lib/prisma";
+import { estimateReadingTime } from "@/lib/utils";
 import { uploadImage } from "@/lib/cloudinary";
 import { geminiJson } from "@/lib/gemini";
 import { generateAndHostImage } from "@/lib/gemini-image";
@@ -304,17 +306,72 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
   return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
 }
 
+// ── Publish the companion "longer read" article for an archive story ─────────
+async function ensureHistoryCategory() {
+  return prisma.category.upsert({
+    where: { slug: "history" },
+    update: {},
+    create: { name: "History", slug: "history", description: "Stories from the past — Indian and world history.", sortOrder: 90 },
+  });
+}
+async function ensureDeskAuthor() {
+  return prisma.user.upsert({
+    where: { email: "newsroom-ai@dailynews.com" },
+    update: {},
+    create: { email: "newsroom-ai@dailynews.com", name: "Lok Mandate Desk", role: "EDITOR" },
+  });
+}
+async function archiveUniqueSlug(base: string): Promise<string> {
+  let slug = slugify(base, { lower: true, strict: true }).slice(0, 80) || `story-${Date.now()}`;
+  if (await prisma.article.findFirst({ where: { slug } })) slug = `${slug}-${Date.now().toString(36)}`;
+  return slug;
+}
+
+/** Publishes the archive story as a full website article. Returns its slug, or null. */
+async function publishArchiveArticle(story: { title: string; body: string; metaDescription: string; kicker: string }, imageUrl: string | null): Promise<string | null> {
+  try {
+    const [cat, author] = await Promise.all([ensureHistoryCategory(), ensureDeskAuthor()]);
+    const slug = await archiveUniqueSlug(story.title);
+    await prisma.article.create({
+      data: {
+        title: story.title,
+        slug,
+        content: story.body,
+        excerpt: story.metaDescription.slice(0, 300),
+        featuredImage: imageUrl,
+        featuredImageAlt: story.title,
+        status: "PUBLISHED",
+        publishedAt: new Date(),
+        readingTime: estimateReadingTime(story.body),
+        metaTitle: story.title.slice(0, 60),
+        metaDescription: story.metaDescription.slice(0, 160),
+        authorId: author.id,
+        categoryId: cat.id,
+      },
+    });
+    return slug;
+  } catch {
+    return null;
+  }
+}
+
 // ── Evergreen "story from the past" Reel (growth pillar) ─────────────────────
 async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date): Promise<{ draft: PostDraft; label: string }> {
   const story = await getArchiveStory(date);
   if (!story) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["no archive story"] }, label: "From the Archives" };
-  const pid = (await generateAndHostImage(`${story.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5"))?.publicId;
-  if (!pid) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
+  const img = await generateAndHostImage(`${story.imagePrompt}. ${style.imageStyle} No text, no logos, no watermark.`, "4:5");
+  if (!img?.publicId) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };
+  const pid = img.publicId;
   const video = await buildReelVideo(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
   if (!video) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive reel build failed"] }, label: story.kicker };
   await primeReel(video);
+
+  // Publish the longer read on the website and link to it in the caption.
+  const slug = await publishArchiveArticle(story, img.url);
+  const link = slug && APP_URL ? `${APP_URL}/articles/${slug}` : undefined;
+
   const cover = overlayUrl(pid, { kicker: story.kicker, hook: story.hook, sub: story.sub, accent });
-  const cap = captionBody(story.caption, ctaSeed);
+  const cap = captionBody(story.caption, ctaSeed, link);
   return {
     draft: {
       slideUrls: [],
