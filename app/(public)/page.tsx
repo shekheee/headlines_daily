@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ArticleCard } from "@/components/public/ArticleCard";
-import { HeroCarousel } from "@/components/public/HeroCarousel";
+import { NewsTicker } from "@/components/public/NewsTicker";
 import { AdSlot } from "@/components/public/AdSlot";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -76,23 +76,32 @@ async function getHomeData() {
 
 export default async function HomePage() {
   const { featuredArticles, categories, latestArticles, trendingArticles } = await getHomeData();
-  const carouselSlides = featuredArticles.slice(0, 5);
-  const topGrid = featuredArticles.slice(5);
+  const lead = featuredArticles[0];
+  const heroSidebar = featuredArticles.slice(1, 6);
+  const tickerItems = featuredArticles.slice(0, 8).map((a) => ({
+    id: a.id,
+    title: a.title,
+    slug: a.slug,
+    category: a.category ? { name: a.category.name, color: a.category.color } : null,
+  }));
 
   return (
     <div className="min-h-screen bg-[#f7f7f5]">
       <div className="container px-4 py-5 max-w-7xl mx-auto">
 
+        {/* ── Moving-news ticker ──────────── */}
+        <NewsTicker items={tickerItems} />
+
         {/* ── Top banner ad ───────────────── */}
         <AdSlot position="HEADER" className="mb-5" />
 
         {/* ── HERO GRID ───────────────────── */}
-        {/* Auto-rotating top-news carousel on left, stacked headlines on right */}
+        {/* Static lead feature on the left, stacked headlines on the right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Moving news carousel */}
+          {/* Lead story */}
           <div className="lg:col-span-2">
-            {carouselSlides.length > 0 ? (
-              <HeroCarousel slides={carouselSlides} />
+            {lead ? (
+              <ArticleCard article={lead} variant="hero" />
             ) : (
               <div className="aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
                 No featured article
@@ -102,7 +111,7 @@ export default async function HomePage() {
 
           {/* Right: stacked headline list */}
           <div className="lg:border-l lg:border-gray-200 lg:pl-6">
-            {topGrid.slice(0, 5).map((a) => (
+            {heroSidebar.map((a) => (
               <ArticleCard key={a.id} article={a} variant="compact" />
             ))}
           </div>
