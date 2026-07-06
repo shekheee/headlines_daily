@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ArticleCard } from "@/components/public/ArticleCard";
+import { HeroCarousel } from "@/components/public/HeroCarousel";
 import { AdSlot } from "@/components/public/AdSlot";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -11,12 +12,16 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
+// History is evergreen and lives in its own section — it shouldn't lead the
+// homepage as breaking/top news.
+const NEWS_ONLY = { NOT: { category: { slug: "history" } } } as const;
+
 async function getHomeData() {
   const [featuredArticles, categories, latestArticles, trendingArticles] = await Promise.all([
     prisma.article.findMany({
-      where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
+      where: { status: "PUBLISHED", publishedAt: { lte: new Date() }, ...NEWS_ONLY },
       orderBy: [{ publishedAt: "desc" }],
-      take: 6,
+      take: 10,
       select: {
         id: true, title: true, slug: true, excerpt: true,
         featuredImage: true, publishedAt: true, readingTime: true, isFeatured: true,
@@ -43,7 +48,7 @@ async function getHomeData() {
       },
     }),
     prisma.article.findMany({
-      where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
+      where: { status: "PUBLISHED", publishedAt: { lte: new Date() }, ...NEWS_ONLY },
       orderBy: { publishedAt: "desc" },
       take: 8,
       select: {
@@ -54,7 +59,7 @@ async function getHomeData() {
       },
     }),
     prisma.article.findMany({
-      where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
+      where: { status: "PUBLISHED", publishedAt: { lte: new Date() }, ...NEWS_ONLY },
       orderBy: [{ viewCount: "desc" }, { publishedAt: "desc" }],
       take: 6,
       select: {
@@ -71,7 +76,8 @@ async function getHomeData() {
 
 export default async function HomePage() {
   const { featuredArticles, categories, latestArticles, trendingArticles } = await getHomeData();
-  const [hero, ...topGrid] = featuredArticles;
+  const carouselSlides = featuredArticles.slice(0, 5);
+  const topGrid = featuredArticles.slice(5);
 
   return (
     <div className="min-h-screen bg-[#f7f7f5]">
@@ -81,12 +87,12 @@ export default async function HomePage() {
         <AdSlot position="HEADER" className="mb-5" />
 
         {/* ── HERO GRID ───────────────────── */}
-        {/* Large lead story on left, stacked headlines on right */}
+        {/* Auto-rotating top-news carousel on left, stacked headlines on right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Big hero */}
+          {/* Moving news carousel */}
           <div className="lg:col-span-2">
-            {hero ? (
-              <ArticleCard article={hero} variant="hero" />
+            {carouselSlides.length > 0 ? (
+              <HeroCarousel slides={carouselSlides} />
             ) : (
               <div className="aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-400 text-sm">
                 No featured article
