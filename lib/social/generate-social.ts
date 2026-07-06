@@ -557,6 +557,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
     if (archive.draft.videoUrl) {
       return finalize(archive.label, "reel", "archive", archive.draft, { style: style.name, alsoStory: true }, opts.dryRun);
     }
+    console.log(`[social-slot] archive reel unavailable, falling back to news reel. reasons: ${archive.draft.errors.join("; ") || "none"}`);
   }
 
   const candidates = await fetchUnposted(6, 3);
