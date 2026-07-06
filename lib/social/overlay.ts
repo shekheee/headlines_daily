@@ -115,6 +115,7 @@ const RH = 1920;
 /**
  * Build a 9:16 captioned scene still: the image cropped/darkened with a single
  * caption (bottom, wrapped) and an optional accent kicker beneath it.
+ * Used for the Reel COVER thumbnail (a static frame, so baking text is fine).
  */
 export function sceneStillUrl(
   publicId: string,
@@ -133,3 +134,45 @@ export function sceneStillUrl(
   t.push("f_jpg,q_auto");
   return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${publicId}`;
 }
+
+// Reel VIDEO scenes are composited in two layers by ffmpeg so the caption stays
+// PUT: the background image gets the Ken-Burns motion, while the caption is a
+// STATIC bottom strip overlaid on top (it must NOT zoom/drift with the image).
+
+/** 9:16 background frame (no text) — this is the layer ffmpeg zooms/pans. */
+export function sceneBgUrl(publicId: string): string {
+  const t = [`c_fill,g_auto,w_${RW},h_${RH}`, "e_brightness:-14", "f_jpg,q_auto"];
+  return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${publicId}`;
+}
+
+// Static caption strip dimensions (a subtitle bar pinned to the lower area).
+const STRIP_W = 1080;
+const STRIP_H = 360;
+
+/**
+ * Build a transparent PNG caption strip: a rounded, semi-transparent black bar
+ * (from a solid black base pixel) with the wrapped caption and an optional
+ * accent kicker. ffmpeg overlays this statically at the bottom of the reel.
+ */
+export function captionStripUrl(
+  baseId: string,
+  opts: { caption: string; kicker?: string; accent?: string }
+): string {
+  const accent = opts.accent || "F5C518";
+  const t: string[] = [];
+  // Semi-transparent rounded band (o_55) from the black base pixel.
+  t.push(`w_${STRIP_W},h_${STRIP_H},c_scale,r_40,o_55`);
+  if (opts.kicker) {
+    t.push(
+      `co_rgb:${accent},l_text:${FONT}_38_bold_letter_spacing_2:${encodeText(opts.kicker.toUpperCase())},g_north_west,x_64,y_44,fl_layer_apply`
+    );
+  }
+  t.push(
+    `co_white,l_text:${FONT}_50_bold_line_spacing_-2:${encodeText(opts.caption)},w_952,c_fit,g_south_west,x_64,y_48,fl_layer_apply`
+  );
+  t.push("f_png");
+  return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${baseId}`;
+}
+
+/** Vertical (from top) offset where the caption strip is overlaid on the reel. */
+export const STRIP_Y = RH - STRIP_H - 150;

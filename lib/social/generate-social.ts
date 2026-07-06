@@ -16,11 +16,12 @@ import { generateAndHostImage } from "@/lib/gemini-image";
 import { getAccountStats, getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
 import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
-import { overlayUrl, sceneStillUrl, publicIdFromUrl } from "@/lib/social/overlay";
+import { overlayUrl, sceneStillUrl, sceneBgUrl, captionStripUrl, publicIdFromUrl } from "@/lib/social/overlay";
 import { buildReelVideo, primeReel } from "@/lib/social/reel";
 import { getArchiveStory } from "@/lib/social/archive";
 import { synthesizeNarration } from "@/lib/social/tts";
 import { renderNarratedReel } from "@/lib/social/ffmpeg-reel";
+import { ensureCaptionBase } from "@/lib/social/caption-base";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
@@ -439,14 +440,20 @@ async function reelFromBeats(
   if (beats.length < 2) return null;
   const voice = await synthesizeNarration(beats.map((b) => b.caption).join(" "), { voiceSeed });
   if (!voice) return null;
-  const stillUrls = beats.map((b) => sceneStillUrl(b.img.publicId, { caption: b.caption, kicker, accent }));
-  const rendered = await renderNarratedReel({ stillUrls, audioUrl: voice.url, weights: beats.map((b) => b.caption.length) });
+  const baseId = await ensureCaptionBase();
+  // Background moves (Ken-Burns); the caption is a static bottom strip on top.
+  const scenes = beats.map((b) => ({
+    bgUrl: sceneBgUrl(b.img.publicId),
+    captionUrl: captionStripUrl(baseId, { caption: b.caption, kicker, accent }),
+  }));
+  const rendered = await renderNarratedReel({ scenes, audioUrl: voice.url, weights: beats.map((b) => b.caption.length) });
   if (!rendered) return null;
   const hosted = await uploadReelFile(rendered.path);
   await rendered.cleanup();
   if (!hosted) return null;
   await primeReel(hosted);
-  return { videoUrl: hosted, coverUrl: stillUrls[0] };
+  // Cover thumbnail is a static frame, so baking the caption on it is fine.
+  return { videoUrl: hosted, coverUrl: sceneStillUrl(beats[0].img.publicId, { caption: beats[0].caption, kicker, accent }) };
 }
 
 async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date): Promise<{ draft: PostDraft; label: string }> {
@@ -669,8 +676,11 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
   }
 
   // 3) Another recent news reel (freshest remaining, category-diverse).
-  const candidates = await fetchUnposted(6, 4);
-  const other = candidates.find((a) => !used.has(a.slug));
+  //    Skip History — that's the archive reel's job; a history news reel would
+  //    just duplicate it. Prefer a category different from the politics reel,
+  //    but fall back to any fresh non-history story.
+  const candidates = (await fetchUnposted(8, 4)).filter((a) => !used.has(a.slug) && a.categorySlug !== "history");
+  const other = candidates.find((a) => a.categorySlug !== "politics") ?? candidates[0];
   if (other) {
     used.add(other.slug);
     const draft = await buildNarratedNewsReel(other, accentFor(style, 3, date), 3, daySeed + 2);
