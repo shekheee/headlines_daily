@@ -1,21 +1,25 @@
 name: Instagram Posts
 
-# Growth-tuned cadence: 4 posts/day across Indian peak hours (IST = UTC+5:30).
-# Each run posts ONE item; the type is chosen from the cron expression below:
+# Growth-tuned, REEL-HEAVY cadence: 5 posts/day across Indian peak hours
+# (IST = UTC+5:30). Reels drive the most new-follower reach, so 3 are spread
+# across the day. Each run posts ONE item; the type is chosen from the cron
+# expression below:
 #   02:30 UTC (~08:00 IST)  -> themed feed post
-#   06:00 UTC (~11:30 IST)  -> Reel
-#   13:00 UTC (~18:30 IST)  -> top-story feed post
+#   05:00 UTC (~10:30 IST)  -> history "From the Archives" Reel
+#   08:30 UTC (~14:00 IST)  -> Indian-politics Reel
+#   13:00 UTC (~18:30 IST)  -> trending recent-news Reel
 #   15:30 UTC (~21:00 IST)  -> Story teaser
 on:
   schedule:
     - cron: "30 2 * * *"
-    - cron: "0 6 * * *"
+    - cron: "0 5 * * *"
+    - cron: "30 8 * * *"
     - cron: "0 13 * * *"
     - cron: "30 15 * * *"
   workflow_dispatch:
     inputs:
       action:
-        description: "Force a post type (theme|reel|article|story|reels3). Leave blank to auto-pick by time."
+        description: "Force a post type (theme|reel|reelpolitics|reelnews|article|story|reels3). Leave blank to auto-pick by time."
         required: false
         default: ""
 
@@ -46,7 +50,9 @@ jobs:
         run: |
           case "${{ github.event.schedule }}" in
             "30 2 * * *")  action=theme ;;
-            "0 6 * * *")   action=reel ;;
+            "0 5 * * *")   action=reel ;;
+            "30 8 * * *")  action=reelpolitics ;;
+            "0 13 * * *")  action=reelnews ;;
             "30 15 * * *") action=story ;;
             *)             action=article ;;
           esac

@@ -23,6 +23,8 @@ import { synthesizeNarration } from "@/lib/social/tts";
 import { renderNarratedReel } from "@/lib/social/ffmpeg-reel";
 import { ensureCaptionBase } from "@/lib/social/caption-base";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
+import { craftHashtags } from "@/lib/social/hashtags";
+import { biasByTrends } from "@/lib/social/trends";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
 const BRAND_TAGS = ["#news", "#indianews", "#india", "#headlinesdaily", "#dailynews", "#breakingnews"];
@@ -296,7 +298,7 @@ async function buildArticlePost(a: Article, accent: string, style: StylePack, ct
   }
   const slide = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 9), sub: copy?.sub, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
-  return { slideUrls: [slide], coverUrl: slide, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug)]), usedSlugs: [a.slug], errors };
+  return { slideUrls: [slide], coverUrl: slide, caption: cap, firstComment: await craftHashtags(a.title, [a.categorySlug]), usedSlugs: [a.slug], errors };
 }
 
 // ── Reel (9:16 motion video) ─────────────────────────────────────────────────
@@ -318,7 +320,7 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
   await primeReel(video); // pre-generate so IG's fetch doesn't time out
   const cover = overlayUrl(pid, { kicker: a.categoryName, hook: copy?.hook || trimWords(a.title, 8), sub: copy?.sub, accent });
   const cap = captionBody(copy?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
-  return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
+  return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: await craftHashtags(a.title, [a.categorySlug, "reels", "reelsindia"]), usedSlugs: [a.slug], errors };
 }
 
 // ── Narrated storytelling Reel from a recent news article ────────────────────
@@ -346,7 +348,7 @@ async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number
 
   const kicker = (story?.kicker || a.categoryName).toUpperCase().slice(0, 24);
   const cap = captionBody(story?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
-  const firstComment = hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]);
+  const firstComment = await craftHashtags(a.title, [a.categorySlug, "reels", "reelsindia"]);
 
   // One distinct image per beat, generated sequentially (parallel trips the image
   // model's rate limit and they all fail).
@@ -480,7 +482,7 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   const slug = await publishArchiveArticle(story, coverImg.url);
   const link = slug && APP_URL ? `${APP_URL}/articles/${slug}` : undefined;
   const cap = captionBody(story.caption, ctaSeed, link);
-  const firstComment = hashtagComment([...BRAND_TAGS, ...story.hashtags, "#reels", "#reelsindia"]);
+  const firstComment = await craftHashtags(story.title, [...story.hashtags.map((h) => h.replace(/^#/, "")), "reels", "reelsindia", "history"]);
 
   // Storytelling reel: young-Indian-woman voiceover + one image per beat with
   // its own caption, assembled by ffmpeg. Falls back to a silent single-image
@@ -612,13 +614,37 @@ export async function generateDailySocialPosts(date = new Date(), opts: { count?
 
 /**
  * Post ONE item — used by the scheduler to spread posts across IST peak times.
- * action: theme | reel | article | story  (defaults chosen by UTC hour).
+ * action: theme | reel | reelpolitics | reelnews | article | story
+ * (defaults chosen by UTC hour). The reel* variants are narrated storytelling
+ * reels; spreading them across the day (vs. one batch) reads as more organic
+ * and squeezes more reach out of the algorithm.
  */
 export async function runSocialSlot(action?: string, date = new Date(), opts: { dryRun?: boolean } = {}): Promise<SocialResult> {
   const style = getStylePack(date);
   const resolved = action || slotForHour(date.getUTCHours());
+  const daySeed = Math.floor(date.getTime() / 86400_000);
 
   if (resolved === "theme") return generateSocialPost(date, { ...opts, alsoStory: true });
+
+  // Indian-politics narrated reel.
+  if (resolved === "reelpolitics") {
+    const pol = await fetchArticleByCategory(["politics"], new Set());
+    if (pol) {
+      const draft = await buildNarratedNewsReel(pol, accentFor(style, 2, date), 2, daySeed + 1);
+      return finalize(`Reel · ${pol.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: pol.slug, alsoStory: true }, opts.dryRun);
+    }
+    console.log("[social-slot] no politics article; falling back to a recent-news reel.");
+  }
+
+  // Freshest recent-news narrated reel, led by whatever is trending in India.
+  if (resolved === "reelnews" || resolved === "reelpolitics") {
+    const pool = (await fetchUnposted(8, 4)).filter((a) => a.categorySlug !== "history");
+    const pick = (await biasByTrends(pool, (a) => `${a.title} ${a.excerpt ?? ""}`))[0];
+    if (pick) {
+      const draft = await buildNarratedNewsReel(pick, accentFor(style, 3, date), 3, daySeed + 2);
+      return finalize(`Reel · ${pick.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: pick.slug, alsoStory: true }, opts.dryRun);
+    }
+  }
 
   // Reels lead with an evergreen "story from the past" (best for reach/saves).
   // If that can't be produced, fall through to a news-derived reel.
@@ -679,7 +705,9 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
   //    Skip History — that's the archive reel's job; a history news reel would
   //    just duplicate it. Prefer a category different from the politics reel,
   //    but fall back to any fresh non-history story.
-  const candidates = (await fetchUnposted(8, 4)).filter((a) => !used.has(a.slug) && a.categorySlug !== "history");
+  const pool = (await fetchUnposted(8, 4)).filter((a) => !used.has(a.slug) && a.categorySlug !== "history");
+  // Lead with whatever is spiking in India right now (free reach).
+  const candidates = await biasByTrends(pool, (a) => `${a.title} ${a.excerpt ?? ""}`);
   const other = candidates.find((a) => a.categorySlug !== "politics") ?? candidates[0];
   if (other) {
     used.add(other.slug);
@@ -694,11 +722,15 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
 }
 
 /** Map a UTC hour to a post type across the Indian day (IST = UTC+5:30). */
+// Reel-heavy cadence: reels drive the most new-follower reach, so 3 spread
+// across the day (history → politics → recent) plus a morning theme and a
+// night story.
 function slotForHour(utcHour: number): string {
-  if (utcHour < 4) return "theme"; // ~7:30-9:30 IST morning
-  if (utcHour < 8) return "reel"; // ~10:30-13:00 IST (wide, since cron can run late)
-  if (utcHour < 14) return "article"; // ~13:30 IST midday
-  return "story"; // ~21:00 IST night (+ articles below)
+  if (utcHour < 4) return "theme"; // ~08:00 IST morning
+  if (utcHour < 7) return "reel"; // ~10:30 IST — history reel
+  if (utcHour < 11) return "reelpolitics"; // ~14:00 IST — Indian politics reel
+  if (utcHour < 14) return "reelnews"; // ~18:30 IST — trending recent reel
+  return "story"; // ~21:00 IST night
 }
 
 /** Refresh cached insights for recently-posted media and log a performance summary. */
