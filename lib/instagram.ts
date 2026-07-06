@@ -201,10 +201,12 @@ export async function postReel(input: { videoUrl: string; caption: string; first
   }
 }
 
-/** Publish an image Story. NOTE: the Content Publishing API does NOT support poll/link
- *  stickers on Stories. The ONE tappable element it does support (since Jul 2025) is a
- *  user MENTION sticker (`user_tags`): tapping it opens that profile. We tag our own
- *  account so the story becomes tappable → our profile → the bio link. */
+/** Publish an image Story. NOTE: the Content Publishing API does NOT support ANY
+ *  tappable/interactive stickers on Stories — no link, poll, or location stickers.
+ *  The `user_tags` mention added Jul 2025 is a SILENT mention (it notifies the
+ *  tagged account) and is explicitly NOT a tappable sticker, so we don't rely on it.
+ *  The only tappable path on an API story is the native account name (→ profile →
+ *  bio link). `mentionUsername` is kept for optional silent tagging only. */
 export async function postStory(input: {
   imageUrl: string;
   mentionUsername?: string;

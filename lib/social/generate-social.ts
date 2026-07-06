@@ -13,7 +13,7 @@ import { estimateReadingTime } from "@/lib/utils";
 import { uploadImage, cloudinary } from "@/lib/cloudinary";
 import { geminiJson } from "@/lib/gemini";
 import { generateAndHostImage } from "@/lib/gemini-image";
-import { getAccountStats, getAccountUsername, getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
+import { getAccountStats, getMediaInsights, postCarouselToInstagram, postReel, postStory, postToInstagram, type IgPostResult } from "@/lib/instagram";
 import { isFacebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { getThemeForDate, type Theme } from "@/lib/social/themes";
 import { overlayUrl, sceneStillUrl, sceneBgUrl, captionStripUrl, storyUrl, publicIdFromUrl } from "@/lib/social/overlay";
@@ -27,17 +27,6 @@ import { craftHashtags } from "@/lib/social/hashtags";
 import { biasByTrends } from "@/lib/social/trends";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
-// Our own handle — tagged in Stories as a tappable mention sticker (the only
-// tappable element the API allows on Stories), funnelling taps to our profile.
-const BRAND_HANDLE = (process.env.IG_BRAND_HANDLE || "").replace(/^@/, "");
-let handleCache: string | null = null;
-/** Live account username (preferred) or the configured brand handle. */
-async function resolveHandle(): Promise<string> {
-  if (handleCache !== null) return handleCache;
-  const live = await getAccountUsername().catch(() => null);
-  handleCache = (live || BRAND_HANDLE || "").replace(/^@/, "");
-  return handleCache;
-}
 const BRAND_TAGS = ["#news", "#indianews", "#india", "#headlinesdaily", "#dailynews", "#breakingnews"];
 
 // Light, non-spammy calls-to-action that nudge likes/saves/comments.
@@ -532,7 +521,7 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
 async function buildStory(a: Article, accent: string): Promise<PostDraft> {
   const pid = await toPublicId(a.featuredImage);
   if (!pid) return { slideUrls: [], caption: "", usedSlugs: [], errors: ["story image failed"] };
-  const slide = storyUrl(pid, { kicker: a.categoryName || "IN THE NEWS", hook: trimWords(a.title, 12), accent, handle: await resolveHandle() });
+  const slide = storyUrl(pid, { kicker: a.categoryName || "IN THE NEWS", hook: trimWords(a.title, 12), accent });
   return { slideUrls: [slide], caption: "", usedSlugs: [], errors: [] };
 }
 
@@ -550,7 +539,7 @@ async function finalize(label: string, kind: string, format: string, draft: Post
   if (kind === "reel" && draft.videoUrl) {
     res = await postReel({ videoUrl: draft.videoUrl, caption: draft.caption, firstComment: draft.firstComment });
   } else if (kind === "story") {
-    res = await postStory({ imageUrl: draft.slideUrls[0], mentionUsername: (await resolveHandle()) || undefined });
+    res = await postStory({ imageUrl: draft.slideUrls[0] });
   } else if (draft.slideUrls.length > 1) {
     res = await postCarouselToInstagram({ imageUrls: draft.slideUrls, caption: draft.caption, firstComment: draft.firstComment });
   } else {
@@ -564,7 +553,7 @@ async function finalize(label: string, kind: string, format: string, draft: Post
       await postToFacebookPage({ imageUrl: draft.coverUrl, caption: draft.caption }).catch(() => {});
     }
     if (meta.alsoStory) {
-      await postStory({ imageUrl: draft.coverUrl, mentionUsername: (await resolveHandle()) || undefined }).catch(() => {});
+      await postStory({ imageUrl: draft.coverUrl }).catch(() => {});
     }
   }
   return { ok: Boolean(res.posted), label, kind, format, slides: draft.slideUrls.length || 1, instagram: res, errors: draft.errors };
