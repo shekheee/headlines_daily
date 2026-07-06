@@ -73,6 +73,16 @@ function briefFor(flavor: ArchiveFlavor, date: Date): { kickerBase: string; dstr
  * confident enough (we'd rather skip than post a shaky "fact").
  */
 export async function getArchiveStory(date = new Date()): Promise<ArchiveStory | null> {
+  // The model occasionally returns nothing / malformed JSON on a given call.
+  // Retry a few times so a transient miss doesn't drop the history reel entirely.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const story = await getArchiveStoryOnce(date);
+    if (story) return story;
+  }
+  return null;
+}
+
+async function getArchiveStoryOnce(date = new Date()): Promise<ArchiveStory | null> {
   const flavor = pickFlavor(date);
   const { kickerBase, dstr, instruction, dateRule, tags } = briefFor(flavor, date);
 
