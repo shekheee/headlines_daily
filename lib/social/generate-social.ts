@@ -152,6 +152,18 @@ async function fetchUnposted(limit: number, withinDays = 3): Promise<Article[]> 
   return picked;
 }
 
+/** Most-recent unposted published article within given categories (for the politics reel). */
+async function fetchArticleByCategory(slugs: string[], exclude: Set<string>, withinDays = 7): Promise<Article | null> {
+  const since = new Date(Date.now() - withinDays * 86400_000);
+  const rows = await prisma.article.findMany({
+    where: { status: "PUBLISHED", publishedAt: { gte: since }, igPostedAt: null, category: { slug: { in: slugs } } },
+    orderBy: { publishedAt: "desc" },
+    take: 12,
+    select: articleSelect,
+  });
+  return mapArticles(rows).find((a) => !exclude.has(a.slug)) ?? null;
+}
+
 async function toPublicId(imageUrl: string | null | undefined): Promise<string | null> {
   if (!imageUrl) return null;
   if (imageUrl.includes("res.cloudinary.com")) return publicIdFromUrl(imageUrl);
@@ -308,6 +320,52 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
   return { slideUrls: [], videoUrl: video, coverUrl: cover, caption: cap, firstComment: hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]), usedSlugs: [a.slug], errors };
 }
 
+// ── Narrated storytelling Reel from a recent news article ────────────────────
+// Same pipeline as the history reel (voiceover + one captioned image per beat,
+// stitched by ffmpeg) but sourced from a live story. Falls back to the silent
+// single-image reel if the voiceover / ffmpeg assembly is unavailable.
+const NEWS_REEL_STYLE =
+  "Cinematic, photorealistic, editorial news photography; clean composition, natural lighting, shallow depth of field, modern documentary look.";
+
+async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number, seed: number): Promise<PostDraft> {
+  const story = await geminiJson<{ kicker: string; caption: string; scenes: { text: string; image: string }[] }>(
+    `You are a video producer for an Indian news brand. Turn this ${a.categoryName} story into a short, engaging narrated Reel that feels like a complete mini-story.\n` +
+      `HEADLINE: ${a.title}\nSUMMARY: ${a.excerpt || ""}\nARTICLE: ${stripHtml(a.content).slice(0, 2500)}\n\n` +
+      `RULES:\n` +
+      `- Use ONLY facts from the article; never invent details.\n` +
+      `- Structure it as a story: a strong hook, then the key developments, then a takeaway. It must feel complete, not a bullet list.\n` +
+      `- 4 to 5 beats. Each beat has:\n` +
+      `   - "text": ONE spoken sentence, max ~16 words, plain natural spoken English, no hashtags/labels/emojis.\n` +
+      `   - "image": a DISTINCT, photorealistic editorial scene for that beat. Use symbolic/contextual scenes (parliament, crowds, maps, flags, documents, locations). Do NOT depict real, identifiable living politicians or private individuals. No text, no logos, no watermark.\n` +
+      `- "kicker": a 2-4 word UPPERCASE label (e.g. "INDIAN POLITICS", "BREAKING").\n` +
+      `- "caption": 2-3 punchy sentences for the Instagram caption.\n` +
+      `Return ONLY JSON: {"kicker":"...","caption":"...","scenes":[{"text":"...","image":"..."}]}`,
+    0.6
+  );
+
+  const kicker = (story?.kicker || a.categoryName).toUpperCase().slice(0, 24);
+  const cap = captionBody(story?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
+  const firstComment = hashtagComment([...BRAND_TAGS, slugTag(a.categorySlug), "#reels", "#reelsindia"]);
+
+  // One distinct image per beat, generated sequentially (parallel trips the image
+  // model's rate limit and they all fail).
+  const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
+  for (const s of story?.scenes ?? []) {
+    if (!s?.text || !s?.image) continue;
+    const img = await generateAndHostImage(`${s.image}. ${NEWS_REEL_STYLE} No text, no logos, no watermark.`, "4:5");
+    if (img?.publicId) beats.push({ caption: s.text, img });
+  }
+
+  const assembled = await reelFromBeats(beats, kicker, accent, seed);
+  if (assembled) {
+    return { slideUrls: [], videoUrl: assembled.videoUrl, coverUrl: assembled.coverUrl, caption: cap, firstComment, usedSlugs: [a.slug], errors: [] };
+  }
+
+  // Fallback: silent single-image reel from the article.
+  console.log(`[news-reel] narrated assembly unavailable for ${a.slug}; falling back to silent reel`);
+  return buildReelPost(a, accent, getStylePack(new Date()), ctaSeed);
+}
+
 // ── Publish the companion "longer read" article for an archive story ─────────
 async function ensureHistoryCategory() {
   return prisma.category.upsert({
@@ -367,6 +425,30 @@ async function uploadReelFile(path: string): Promise<string | null> {
   }
 }
 
+/**
+ * Shared reel assembly: narrate the beats (young-Indian-woman voiceover) and
+ * stitch one captioned image per beat into a video with ffmpeg. Returns the
+ * hosted video + cover, or null (caller falls back to a silent reel).
+ */
+async function reelFromBeats(
+  beats: { caption: string; img: { url: string; publicId: string } }[],
+  kicker: string,
+  accent: string,
+  voiceSeed: number
+): Promise<{ videoUrl: string; coverUrl: string } | null> {
+  if (beats.length < 2) return null;
+  const voice = await synthesizeNarration(beats.map((b) => b.caption).join(" "), { voiceSeed });
+  if (!voice) return null;
+  const stillUrls = beats.map((b) => sceneStillUrl(b.img.publicId, { caption: b.caption, kicker, accent }));
+  const rendered = await renderNarratedReel({ stillUrls, audioUrl: voice.url, weights: beats.map((b) => b.caption.length) });
+  if (!rendered) return null;
+  const hosted = await uploadReelFile(rendered.path);
+  await rendered.cleanup();
+  if (!hosted) return null;
+  await primeReel(hosted);
+  return { videoUrl: hosted, coverUrl: stillUrls[0] };
+}
+
 async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date): Promise<{ draft: PostDraft; label: string }> {
   const story = await getArchiveStory(date);
   if (!story) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["no archive story"] }, label: "From the Archives" };
@@ -396,31 +478,12 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   // Storytelling reel: young-Indian-woman voiceover + one image per beat with
   // its own caption, assembled by ffmpeg. Falls back to a silent single-image
   // reel if the voiceover or ffmpeg assembly is unavailable.
-  const voice = await synthesizeNarration(beats.map((b) => b.caption).join(" "), {
-    voiceSeed: Math.floor(date.getTime() / 86_400_000),
-  });
-  if (voice && beats.length >= 2) {
-    const stillUrls = beats.map((b) => sceneStillUrl(b.img.publicId, { caption: b.caption, kicker: story.kicker, accent }));
-    const rendered = await renderNarratedReel({ stillUrls, audioUrl: voice.url, weights: beats.map((b) => b.caption.length) });
-    if (rendered) {
-      const hosted = await uploadReelFile(rendered.path);
-      await rendered.cleanup();
-      if (hosted) {
-        await primeReel(hosted);
-        return {
-          draft: {
-            slideUrls: [],
-            videoUrl: hosted,
-            coverUrl: stillUrls[0],
-            caption: cap,
-            firstComment,
-            usedSlugs: [],
-            errors: [],
-          },
-          label: story.kicker,
-        };
-      }
-    }
+  const assembled = await reelFromBeats(beats, story.kicker, accent, Math.floor(date.getTime() / 86_400_000));
+  if (assembled) {
+    return {
+      draft: { slideUrls: [], videoUrl: assembled.videoUrl, coverUrl: assembled.coverUrl, caption: cap, firstComment, usedSlugs: [], errors: [] },
+      label: story.kicker,
+    };
   }
 
   // Fallback: silent single-image reel.
@@ -575,6 +638,49 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
   // default: article
   const draft = await buildArticlePost(a, accentFor(style, 2, date), style, 2);
   return finalize(`Top Story · ${a.categoryName}`, "feed", "article-single", draft, { style: style.name, articleSlug: a.slug, alsoStory: true }, opts.dryRun);
+}
+
+/**
+ * Post THREE narrated storytelling Reels in one run:
+ *   1) a "from the archives" history reel,
+ *   2) an Indian-politics reel from a recent story,
+ *   3) another recent news reel.
+ * All three use the young-Indian-woman voiceover + one captioned image per beat.
+ */
+export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean } = {}): Promise<DailySocialResult> {
+  const started = Date.now();
+  const style = getStylePack(date);
+  const daySeed = Math.floor(date.getTime() / 86400_000);
+  const used = new Set<string>();
+  const posts: SocialResult[] = [];
+
+  // 1) History reel.
+  const archive = await buildArchiveReel(accentFor(style, 1, date), style, 1, date);
+  posts.push(await finalize(archive.label, "reel", "archive", archive.draft, { style: style.name, alsoStory: true }, opts.dryRun));
+
+  // 2) Indian-politics reel.
+  const pol = await fetchArticleByCategory(["politics"], used);
+  if (pol) {
+    used.add(pol.slug);
+    const draft = await buildNarratedNewsReel(pol, accentFor(style, 2, date), 2, daySeed + 1);
+    posts.push(await finalize(`Reel · ${pol.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: pol.slug, alsoStory: true }, opts.dryRun));
+  } else {
+    posts.push({ ok: false, label: "Reel · Politics", kind: "reel", format: "news-story", slides: 0, instagram: { skipped: "no unposted politics article" }, errors: [] });
+  }
+
+  // 3) Another recent news reel (freshest remaining, category-diverse).
+  const candidates = await fetchUnposted(6, 4);
+  const other = candidates.find((a) => !used.has(a.slug));
+  if (other) {
+    used.add(other.slug);
+    const draft = await buildNarratedNewsReel(other, accentFor(style, 3, date), 3, daySeed + 2);
+    posts.push(await finalize(`Reel · ${other.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: other.slug }, opts.dryRun));
+  } else {
+    posts.push({ ok: false, label: "Reel · Recent", kind: "reel", format: "news-story", slides: 0, instagram: { skipped: "no unposted article" }, errors: [] });
+  }
+
+  const posted = posts.filter((p) => p.ok).length;
+  return { ok: posted > 0, date: date.toISOString().slice(0, 10), stylePack: style.name, posted, requested: 3, posts, tookMs: Date.now() - started };
 }
 
 /** Map a UTC hour to a post type across the Indian day (IST = UTC+5:30). */

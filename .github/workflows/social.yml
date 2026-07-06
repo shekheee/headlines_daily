@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "Force a post type (theme|reel|article|story). Leave blank to auto-pick by time."
+        description: "Force a post type (theme|reel|article|story|reels3). Leave blank to auto-pick by time."
         required: false
         default: ""
 
@@ -26,7 +26,7 @@ concurrency:
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +35,9 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npx prisma generate
+      # Reels are assembled with ffmpeg (multi-image + voiceover). Ensure it's present.
+      - name: Ensure ffmpeg
+        run: ffmpeg -version >/dev/null 2>&1 || sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       # Pick the post type from the *cron expression that triggered this run*,
       # not the actual clock time — GitHub schedules routinely run 30–90 min
       # late, which used to make the delayed 06:00 "reel" slot post an article.

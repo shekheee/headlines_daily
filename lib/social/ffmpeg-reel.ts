@@ -98,7 +98,8 @@ export async function renderNarratedReel(opts: {
     }
     return { path: out, cleanup };
   } catch (e) {
-    if (process.env.DEBUG_FFREEL) console.error("[ffreel]", e);
+    const err = e as { message?: string; stderr?: string };
+    console.error("[ffreel] render failed:", err.message || e, err.stderr ? `\n${String(err.stderr).slice(-600)}` : "");
     await cleanup();
     return null;
   }
