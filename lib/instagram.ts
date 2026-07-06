@@ -202,17 +202,30 @@ export async function postReel(input: { videoUrl: string; caption: string; first
 }
 
 /** Publish an image Story. NOTE: the Content Publishing API does NOT support poll/link
- *  stickers on Stories, so this is a plain image Story (great for a daily teaser). */
-export async function postStory(input: { imageUrl: string }): Promise<IgPostResult> {
+ *  stickers on Stories. The ONE tappable element it does support (since Jul 2025) is a
+ *  user MENTION sticker (`user_tags`): tapping it opens that profile. We tag our own
+ *  account so the story becomes tappable → our profile → the bio link. */
+export async function postStory(input: {
+  imageUrl: string;
+  mentionUsername?: string;
+  mentionX?: number;
+  mentionY?: number;
+}): Promise<IgPostResult> {
   if (!isInstagramConfigured()) return { posted: false, skipped: "Instagram not configured" };
   if (!input.imageUrl) return { posted: false, skipped: "No image to post" };
   const userId = process.env.IG_USER_ID!;
   const token = process.env.IG_ACCESS_TOKEN!;
   try {
+    const body: Record<string, unknown> = { media_type: "STORIES", image_url: input.imageUrl, access_token: token };
+    if (input.mentionUsername) {
+      body.user_tags = [
+        { username: input.mentionUsername.replace(/^@/, ""), x: input.mentionX ?? 0.5, y: input.mentionY ?? 0.88 },
+      ];
+    }
     const createRes = await fetch(`${GRAPH}/${userId}/media`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ media_type: "STORIES", image_url: input.imageUrl, access_token: token }),
+      body: JSON.stringify(body),
     });
     const createData = await createRes.json();
     if (!createRes.ok || !createData.id) return { posted: false, error: `story container: ${JSON.stringify(createData).slice(0, 200)}` };

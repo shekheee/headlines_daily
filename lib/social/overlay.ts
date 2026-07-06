@@ -176,3 +176,36 @@ export function captionStripUrl(
 
 /** Vertical (from top) offset where the caption strip is overlaid on the reel. */
 export const STRIP_Y = RH - STRIP_H - 150;
+
+/**
+ * Full-screen 9:16 Story image: headline up top, and a clear "read the full
+ * story → tap @handle" call-to-action in the lower third. The tappable mention
+ * sticker (added by postStory via user_tags) sits just below this CTA, so the
+ * text visually points at the thing users tap.
+ */
+export function storyUrl(
+  publicId: string,
+  opts: { kicker?: string; hook: string; accent?: string; handle?: string }
+): string {
+  const accent = opts.accent || "F5C518";
+  const t: string[] = [`c_fill,g_auto,w_${RW},h_${RH}`, "e_brightness:-30"];
+  // Kicker + headline near the top.
+  t.push(
+    `co_rgb:${accent},l_text:${FONT}_48_bold_letter_spacing_2:${encodeText((opts.kicker || "IN THE NEWS").toUpperCase())},g_north_west,x_80,y_200`
+  );
+  t.push(
+    `co_white,l_text:${FONT}_88_bold_line_spacing_-6:${encodeText(opts.hook)},w_920,c_fit,g_north_west,x_80,y_300`
+  );
+  // CTA just above the tappable mention sticker (which postStory pins at y~0.88).
+  t.push(
+    `co_white,l_text:${FONT}_58_bold:${encodeText("READ THE FULL STORY")},g_south,y_560`
+  );
+  const handle = (opts.handle || "").replace(/^@/, "");
+  if (handle) {
+    t.push(
+      `co_rgb:${accent},l_text:${FONT}_46_bold:${encodeText(`Tap @${handle} - link in bio`)},g_south,y_480`
+    );
+  }
+  t.push("f_jpg,q_auto");
+  return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${publicId}`;
+}
