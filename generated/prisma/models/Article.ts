@@ -52,6 +52,7 @@ export type ArticleMinAggregateOutputType = {
   metaTitle: string | null
   metaDescription: string | null
   sourceUrl: string | null
+  igPostedAt: Date | null
   authorId: string | null
   categoryId: string | null
   createdAt: Date | null
@@ -74,6 +75,7 @@ export type ArticleMaxAggregateOutputType = {
   metaTitle: string | null
   metaDescription: string | null
   sourceUrl: string | null
+  igPostedAt: Date | null
   authorId: string | null
   categoryId: string | null
   createdAt: Date | null
@@ -96,6 +98,7 @@ export type ArticleCountAggregateOutputType = {
   metaTitle: number
   metaDescription: number
   sourceUrl: number
+  igPostedAt: number
   authorId: number
   categoryId: number
   createdAt: number
@@ -130,6 +133,7 @@ export type ArticleMinAggregateInputType = {
   metaTitle?: true
   metaDescription?: true
   sourceUrl?: true
+  igPostedAt?: true
   authorId?: true
   categoryId?: true
   createdAt?: true
@@ -152,6 +156,7 @@ export type ArticleMaxAggregateInputType = {
   metaTitle?: true
   metaDescription?: true
   sourceUrl?: true
+  igPostedAt?: true
   authorId?: true
   categoryId?: true
   createdAt?: true
@@ -174,6 +179,7 @@ export type ArticleCountAggregateInputType = {
   metaTitle?: true
   metaDescription?: true
   sourceUrl?: true
+  igPostedAt?: true
   authorId?: true
   categoryId?: true
   createdAt?: true
@@ -283,6 +289,7 @@ export type ArticleGroupByOutputType = {
   metaTitle: string | null
   metaDescription: string | null
   sourceUrl: string | null
+  igPostedAt: Date | null
   authorId: string
   categoryId: string | null
   createdAt: Date
@@ -328,6 +335,7 @@ export type ArticleWhereInput = {
   metaTitle?: Prisma.StringNullableFilter<"Article"> | string | null
   metaDescription?: Prisma.StringNullableFilter<"Article"> | string | null
   sourceUrl?: Prisma.StringNullableFilter<"Article"> | string | null
+  igPostedAt?: Prisma.DateTimeNullableFilter<"Article"> | Date | string | null
   authorId?: Prisma.StringFilter<"Article"> | string
   categoryId?: Prisma.StringNullableFilter<"Article"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Article"> | Date | string
@@ -353,6 +361,7 @@ export type ArticleOrderByWithRelationInput = {
   metaTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  igPostedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   authorId?: Prisma.SortOrder
   categoryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -381,6 +390,7 @@ export type ArticleWhereUniqueInput = Prisma.AtLeast<{
   readingTime?: Prisma.IntNullableFilter<"Article"> | number | null
   metaTitle?: Prisma.StringNullableFilter<"Article"> | string | null
   metaDescription?: Prisma.StringNullableFilter<"Article"> | string | null
+  igPostedAt?: Prisma.DateTimeNullableFilter<"Article"> | Date | string | null
   authorId?: Prisma.StringFilter<"Article"> | string
   categoryId?: Prisma.StringNullableFilter<"Article"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Article"> | Date | string
@@ -406,6 +416,7 @@ export type ArticleOrderByWithAggregationInput = {
   metaTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   sourceUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  igPostedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   authorId?: Prisma.SortOrder
   categoryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -436,6 +447,7 @@ export type ArticleScalarWhereWithAggregatesInput = {
   metaTitle?: Prisma.StringNullableWithAggregatesFilter<"Article"> | string | null
   metaDescription?: Prisma.StringNullableWithAggregatesFilter<"Article"> | string | null
   sourceUrl?: Prisma.StringNullableWithAggregatesFilter<"Article"> | string | null
+  igPostedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Article"> | Date | string | null
   authorId?: Prisma.StringWithAggregatesFilter<"Article"> | string
   categoryId?: Prisma.StringNullableWithAggregatesFilter<"Article"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Article"> | Date | string
@@ -458,6 +470,7 @@ export type ArticleCreateInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutArticlesInput
@@ -481,6 +494,7 @@ export type ArticleUncheckedCreateInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   authorId: string
   categoryId?: string | null
   createdAt?: Date | string
@@ -504,6 +518,7 @@ export type ArticleUpdateInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutArticlesNestedInput
@@ -527,6 +542,7 @@ export type ArticleUncheckedUpdateInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   authorId?: Prisma.StringFieldUpdateOperationsInput | string
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -550,6 +566,7 @@ export type ArticleCreateManyInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   authorId: string
   categoryId?: string | null
   createdAt?: Date | string
@@ -572,6 +589,7 @@ export type ArticleUpdateManyMutationInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -592,6 +610,7 @@ export type ArticleUncheckedUpdateManyInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   authorId?: Prisma.StringFieldUpdateOperationsInput | string
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -624,6 +643,7 @@ export type ArticleCountOrderByAggregateInput = {
   metaTitle?: Prisma.SortOrder
   metaDescription?: Prisma.SortOrder
   sourceUrl?: Prisma.SortOrder
+  igPostedAt?: Prisma.SortOrder
   authorId?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -651,6 +671,7 @@ export type ArticleMaxOrderByAggregateInput = {
   metaTitle?: Prisma.SortOrder
   metaDescription?: Prisma.SortOrder
   sourceUrl?: Prisma.SortOrder
+  igPostedAt?: Prisma.SortOrder
   authorId?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -673,6 +694,7 @@ export type ArticleMinOrderByAggregateInput = {
   metaTitle?: Prisma.SortOrder
   metaDescription?: Prisma.SortOrder
   sourceUrl?: Prisma.SortOrder
+  igPostedAt?: Prisma.SortOrder
   authorId?: Prisma.SortOrder
   categoryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -830,6 +852,7 @@ export type ArticleCreateWithoutAuthorInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   category?: Prisma.CategoryCreateNestedOneWithoutArticlesInput
@@ -852,6 +875,7 @@ export type ArticleUncheckedCreateWithoutAuthorInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -903,6 +927,7 @@ export type ArticleScalarWhereInput = {
   metaTitle?: Prisma.StringNullableFilter<"Article"> | string | null
   metaDescription?: Prisma.StringNullableFilter<"Article"> | string | null
   sourceUrl?: Prisma.StringNullableFilter<"Article"> | string | null
+  igPostedAt?: Prisma.DateTimeNullableFilter<"Article"> | Date | string | null
   authorId?: Prisma.StringFilter<"Article"> | string
   categoryId?: Prisma.StringNullableFilter<"Article"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Article"> | Date | string
@@ -925,6 +950,7 @@ export type ArticleCreateWithoutCategoryInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutArticlesInput
@@ -947,6 +973,7 @@ export type ArticleUncheckedCreateWithoutCategoryInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   authorId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -995,6 +1022,7 @@ export type ArticleCreateWithoutTagsInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutArticlesInput
@@ -1017,6 +1045,7 @@ export type ArticleUncheckedCreateWithoutTagsInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   authorId: string
   categoryId?: string | null
   createdAt?: Date | string
@@ -1060,6 +1089,7 @@ export type ArticleCreateManyAuthorInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   categoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1081,6 +1111,7 @@ export type ArticleUpdateWithoutAuthorInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   category?: Prisma.CategoryUpdateOneWithoutArticlesNestedInput
@@ -1103,6 +1134,7 @@ export type ArticleUncheckedUpdateWithoutAuthorInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1125,6 +1157,7 @@ export type ArticleUncheckedUpdateManyWithoutAuthorInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1146,6 +1179,7 @@ export type ArticleCreateManyCategoryInput = {
   metaTitle?: string | null
   metaDescription?: string | null
   sourceUrl?: string | null
+  igPostedAt?: Date | string | null
   authorId: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1167,6 +1201,7 @@ export type ArticleUpdateWithoutCategoryInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutArticlesNestedInput
@@ -1189,6 +1224,7 @@ export type ArticleUncheckedUpdateWithoutCategoryInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   authorId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1211,6 +1247,7 @@ export type ArticleUncheckedUpdateManyWithoutCategoryInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   authorId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1232,6 +1269,7 @@ export type ArticleUpdateWithoutTagsInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutArticlesNestedInput
@@ -1254,6 +1292,7 @@ export type ArticleUncheckedUpdateWithoutTagsInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   authorId?: Prisma.StringFieldUpdateOperationsInput | string
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1276,6 +1315,7 @@ export type ArticleUncheckedUpdateManyWithoutTagsInput = {
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sourceUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  igPostedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   authorId?: Prisma.StringFieldUpdateOperationsInput | string
   categoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1329,6 +1369,7 @@ export type ArticleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   metaTitle?: boolean
   metaDescription?: boolean
   sourceUrl?: boolean
+  igPostedAt?: boolean
   authorId?: boolean
   categoryId?: boolean
   createdAt?: boolean
@@ -1355,6 +1396,7 @@ export type ArticleSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   metaTitle?: boolean
   metaDescription?: boolean
   sourceUrl?: boolean
+  igPostedAt?: boolean
   authorId?: boolean
   categoryId?: boolean
   createdAt?: boolean
@@ -1379,6 +1421,7 @@ export type ArticleSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   metaTitle?: boolean
   metaDescription?: boolean
   sourceUrl?: boolean
+  igPostedAt?: boolean
   authorId?: boolean
   categoryId?: boolean
   createdAt?: boolean
@@ -1403,13 +1446,14 @@ export type ArticleSelectScalar = {
   metaTitle?: boolean
   metaDescription?: boolean
   sourceUrl?: boolean
+  igPostedAt?: boolean
   authorId?: boolean
   categoryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ArticleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "slug" | "content" | "excerpt" | "featuredImage" | "featuredImageAlt" | "status" | "publishedAt" | "isFeatured" | "viewCount" | "readingTime" | "metaTitle" | "metaDescription" | "sourceUrl" | "authorId" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["article"]>
+export type ArticleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "slug" | "content" | "excerpt" | "featuredImage" | "featuredImageAlt" | "status" | "publishedAt" | "isFeatured" | "viewCount" | "readingTime" | "metaTitle" | "metaDescription" | "sourceUrl" | "igPostedAt" | "authorId" | "categoryId" | "createdAt" | "updatedAt", ExtArgs["result"]["article"]>
 export type ArticleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   category?: boolean | Prisma.Article$categoryArgs<ExtArgs>
@@ -1448,6 +1492,7 @@ export type $ArticlePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     metaTitle: string | null
     metaDescription: string | null
     sourceUrl: string | null
+    igPostedAt: Date | null
     authorId: string
     categoryId: string | null
     createdAt: Date
@@ -1893,6 +1938,7 @@ export interface ArticleFieldRefs {
   readonly metaTitle: Prisma.FieldRef<"Article", 'String'>
   readonly metaDescription: Prisma.FieldRef<"Article", 'String'>
   readonly sourceUrl: Prisma.FieldRef<"Article", 'String'>
+  readonly igPostedAt: Prisma.FieldRef<"Article", 'DateTime'>
   readonly authorId: Prisma.FieldRef<"Article", 'String'>
   readonly categoryId: Prisma.FieldRef<"Article", 'String'>
   readonly createdAt: Prisma.FieldRef<"Article", 'DateTime'>

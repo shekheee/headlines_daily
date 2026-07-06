@@ -9,6 +9,8 @@ import { fetchFeed, type RssItem } from "@/lib/rss";
 import { rewriteArticle } from "@/lib/gemini";
 import { generateAndHostArticleImage } from "@/lib/gemini-image";
 import { buildCaption, isInstagramConfigured, postToInstagram } from "@/lib/instagram";
+import { articlePlaceholderUrl } from "@/lib/social/overlay";
+import { ensureCaptionBase } from "@/lib/social/caption-base";
 
 const ITEMS_PER_FEED = 4;
 export const DEFAULT_MAX_PER_RUN = 30;
@@ -47,7 +49,9 @@ async function uniqueSlug(base: string): Promise<string> {
 export async function generateDailyNews(maxPerRun = DEFAULT_MAX_PER_RUN): Promise<GenerateResult> {
   const started = Date.now();
   const author = await ensureAuthor();
-  const categories = await prisma.category.findMany({ select: { id: true, slug: true, name: true } });
+  const categories = await prisma.category.findMany({
+    select: { id: true, slug: true, name: true, color: true },
+  });
   const catBySlug = new Map(categories.map((c) => [c.slug, c]));
 
   const candidates: { item: RssItem; categorySlug: string; sourceName: string }[] = [];
@@ -117,15 +121,30 @@ export async function generateDailyNews(maxPerRun = DEFAULT_MAX_PER_RUN): Promis
       }
       const slug = await uniqueSlug(rewritten.title);
 
-      // Prefer an original AI-generated editorial image; fall back to the RSS thumbnail.
+      // Prefer an original AI-generated editorial image; fall back to the RSS
+      // thumbnail; and if both are unavailable, use a guaranteed branded card so
+      // every article/card/carousel slide always has artwork.
+      const cat = catBySlug.get(c.categorySlug)!;
       let imageUrl = c.item.imageUrl;
       const aiImage = await generateAndHostArticleImage({
         title: rewritten.title,
-        category: catBySlug.get(c.categorySlug)!.name,
+        category: cat.name,
         excerpt: rewritten.excerpt,
       });
       if (aiImage) imageUrl = aiImage;
       else errors.push(`image gen skipped/failed: ${c.item.title.slice(0, 50)}`);
+      if (!imageUrl) {
+        try {
+          const base = await ensureCaptionBase();
+          imageUrl = articlePlaceholderUrl(base, {
+            title: rewritten.title,
+            kicker: cat.name,
+            color: cat.color ?? undefined,
+          });
+        } catch {
+          /* placeholder is best-effort */
+        }
+      }
 
       const article = await prisma.article.create({
         data: {

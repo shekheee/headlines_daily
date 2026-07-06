@@ -391,6 +391,8 @@ export const ModelName = {
   Category: 'Category',
   Tag: 'Tag',
   Article: 'Article',
+  SocialPost: 'SocialPost',
+  AccountSnapshot: 'AccountSnapshot',
   Ad: 'Ad',
   BreakingNews: 'BreakingNews',
   Media: 'Media'
@@ -409,7 +411,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "session" | "verificationToken" | "user" | "category" | "tag" | "article" | "ad" | "breakingNews" | "media"
+    modelProps: "account" | "session" | "verificationToken" | "user" | "category" | "tag" | "article" | "socialPost" | "accountSnapshot" | "ad" | "breakingNews" | "media"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -931,6 +933,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SocialPost: {
+      payload: Prisma.$SocialPostPayload<ExtArgs>
+      fields: Prisma.SocialPostFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SocialPostFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SocialPostFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>
+        }
+        findFirst: {
+          args: Prisma.SocialPostFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SocialPostFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>
+        }
+        findMany: {
+          args: Prisma.SocialPostFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>[]
+        }
+        create: {
+          args: Prisma.SocialPostCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>
+        }
+        createMany: {
+          args: Prisma.SocialPostCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SocialPostCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>[]
+        }
+        delete: {
+          args: Prisma.SocialPostDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>
+        }
+        update: {
+          args: Prisma.SocialPostUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>
+        }
+        deleteMany: {
+          args: Prisma.SocialPostDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SocialPostUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SocialPostUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>[]
+        }
+        upsert: {
+          args: Prisma.SocialPostUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SocialPostPayload>
+        }
+        aggregate: {
+          args: Prisma.SocialPostAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSocialPost>
+        }
+        groupBy: {
+          args: Prisma.SocialPostGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SocialPostGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SocialPostCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SocialPostCountAggregateOutputType> | number
+        }
+      }
+    }
+    AccountSnapshot: {
+      payload: Prisma.$AccountSnapshotPayload<ExtArgs>
+      fields: Prisma.AccountSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AccountSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AccountSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.AccountSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AccountSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.AccountSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.AccountSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.AccountSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AccountSnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.AccountSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>
+        }
+        update: {
+          args: Prisma.AccountSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.AccountSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AccountSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AccountSnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.AccountSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.AccountSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAccountSnapshot>
+        }
+        groupBy: {
+          args: Prisma.AccountSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccountSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AccountSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccountSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
     Ad: {
       payload: Prisma.$AdPayload<ExtArgs>
       fields: Prisma.AdFieldRefs
@@ -1284,6 +1434,7 @@ export const ArticleScalarFieldEnum = {
   metaTitle: 'metaTitle',
   metaDescription: 'metaDescription',
   sourceUrl: 'sourceUrl',
+  igPostedAt: 'igPostedAt',
   authorId: 'authorId',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
@@ -1291,6 +1442,39 @@ export const ArticleScalarFieldEnum = {
 } as const
 
 export type ArticleScalarFieldEnum = (typeof ArticleScalarFieldEnum)[keyof typeof ArticleScalarFieldEnum]
+
+
+export const SocialPostScalarFieldEnum = {
+  id: 'id',
+  igMediaId: 'igMediaId',
+  kind: 'kind',
+  theme: 'theme',
+  format: 'format',
+  style: 'style',
+  slotHour: 'slotHour',
+  articleSlug: 'articleSlug',
+  likes: 'likes',
+  reach: 'reach',
+  saved: 'saved',
+  comments: 'comments',
+  shares: 'shares',
+  fetchedAt: 'fetchedAt',
+  postedAt: 'postedAt'
+} as const
+
+export type SocialPostScalarFieldEnum = (typeof SocialPostScalarFieldEnum)[keyof typeof SocialPostScalarFieldEnum]
+
+
+export const AccountSnapshotScalarFieldEnum = {
+  id: 'id',
+  day: 'day',
+  followers: 'followers',
+  follows: 'follows',
+  mediaCount: 'mediaCount',
+  createdAt: 'createdAt'
+} as const
+
+export type AccountSnapshotScalarFieldEnum = (typeof AccountSnapshotScalarFieldEnum)[keyof typeof AccountSnapshotScalarFieldEnum]
 
 
 export const AdScalarFieldEnum = {
@@ -1593,6 +1777,8 @@ export type GlobalOmitConfig = {
   category?: Prisma.CategoryOmit
   tag?: Prisma.TagOmit
   article?: Prisma.ArticleOmit
+  socialPost?: Prisma.SocialPostOmit
+  accountSnapshot?: Prisma.AccountSnapshotOmit
   ad?: Prisma.AdOmit
   breakingNews?: Prisma.BreakingNewsOmit
   media?: Prisma.MediaOmit

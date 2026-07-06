@@ -58,6 +58,8 @@ export const ModelName = {
   Category: 'Category',
   Tag: 'Tag',
   Article: 'Article',
+  SocialPost: 'SocialPost',
+  AccountSnapshot: 'AccountSnapshot',
   Ad: 'Ad',
   BreakingNews: 'BreakingNews',
   Media: 'Media'
@@ -171,6 +173,7 @@ export const ArticleScalarFieldEnum = {
   metaTitle: 'metaTitle',
   metaDescription: 'metaDescription',
   sourceUrl: 'sourceUrl',
+  igPostedAt: 'igPostedAt',
   authorId: 'authorId',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
@@ -178,6 +181,39 @@ export const ArticleScalarFieldEnum = {
 } as const
 
 export type ArticleScalarFieldEnum = (typeof ArticleScalarFieldEnum)[keyof typeof ArticleScalarFieldEnum]
+
+
+export const SocialPostScalarFieldEnum = {
+  id: 'id',
+  igMediaId: 'igMediaId',
+  kind: 'kind',
+  theme: 'theme',
+  format: 'format',
+  style: 'style',
+  slotHour: 'slotHour',
+  articleSlug: 'articleSlug',
+  likes: 'likes',
+  reach: 'reach',
+  saved: 'saved',
+  comments: 'comments',
+  shares: 'shares',
+  fetchedAt: 'fetchedAt',
+  postedAt: 'postedAt'
+} as const
+
+export type SocialPostScalarFieldEnum = (typeof SocialPostScalarFieldEnum)[keyof typeof SocialPostScalarFieldEnum]
+
+
+export const AccountSnapshotScalarFieldEnum = {
+  id: 'id',
+  day: 'day',
+  followers: 'followers',
+  follows: 'follows',
+  mediaCount: 'mediaCount',
+  createdAt: 'createdAt'
+} as const
+
+export type AccountSnapshotScalarFieldEnum = (typeof AccountSnapshotScalarFieldEnum)[keyof typeof AccountSnapshotScalarFieldEnum]
 
 
 export const AdScalarFieldEnum = {

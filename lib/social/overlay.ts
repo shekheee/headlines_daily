@@ -178,6 +178,36 @@ export function captionStripUrl(
 export const STRIP_Y = RH - STRIP_H - 150;
 
 /**
+ * Guaranteed 16:9 branded article image, built from a solid base pixel (see
+ * ensureCaptionBase) tinted with the category colour + the headline. Used as a
+ * last-resort fallback so EVERY article/card has artwork even when the image
+ * model is unavailable. `color` is a hex string without the leading '#'.
+ */
+export function articlePlaceholderUrl(
+  baseId: string,
+  opts: { title: string; kicker?: string; color?: string }
+): string {
+  const color = (opts.color || "111827").replace(/^#/, "");
+  const PW = 1280;
+  const PH = 720;
+  const t: string[] = [];
+  // Fill the base pixel to a full-bleed panel and colourize it to the category hue.
+  t.push(`w_${PW},h_${PH},c_scale`);
+  t.push(`e_colorize:100,co_rgb:${color}`);
+  t.push("e_brightness:-10");
+  if (opts.kicker) {
+    t.push(
+      `co_white,l_text:${FONT}_44_bold_letter_spacing_3:${encodeText(opts.kicker.toUpperCase())},g_north_west,x_80,y_90,fl_layer_apply`
+    );
+  }
+  t.push(
+    `co_white,l_text:${FONT}_78_bold_line_spacing_-4:${encodeText(opts.title)},w_1120,c_fit,g_west,x_80,y_20,fl_layer_apply`
+  );
+  t.push("f_jpg,q_auto");
+  return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${baseId}`;
+}
+
+/**
  * Full-screen 9:16 Story image: headline up top and a call-to-action in the
  * lower third. Meta's API can't add link/mention STICKERS to a story, so the
  * only tappable path is the native account name at the top-left of every story

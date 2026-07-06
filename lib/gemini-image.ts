@@ -122,7 +122,13 @@ export async function generateAndHostArticleImage(input: {
     process.env.CLOUDINARY_API_SECRET;
   if (!cloudinaryReady) return null;
 
-  const dataUri = await generateArticleImageDataUri(input);
+  // The image model rate-limits/times out transiently; a couple of retries turns
+  // most of those misses into a real image instead of a placeholder.
+  let dataUri: string | null = null;
+  for (let attempt = 0; attempt < 3 && !dataUri; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
+    dataUri = await generateArticleImageDataUri(input);
+  }
   if (!dataUri) return null;
 
   try {

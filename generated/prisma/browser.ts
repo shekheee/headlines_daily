@@ -53,6 +53,16 @@ export type Tag = Prisma.TagModel
  */
 export type Article = Prisma.ArticleModel
 /**
+ * Model SocialPost
+ * 
+ */
+export type SocialPost = Prisma.SocialPostModel
+/**
+ * Model AccountSnapshot
+ * 
+ */
+export type AccountSnapshot = Prisma.AccountSnapshotModel
+/**
  * Model Ad
  * 
  */
