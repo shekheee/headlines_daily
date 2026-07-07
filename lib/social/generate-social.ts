@@ -22,7 +22,6 @@ import { getArchiveStory } from "@/lib/social/archive";
 import { synthesizeNarration } from "@/lib/social/tts";
 import { renderNarratedReel } from "@/lib/social/ffmpeg-reel";
 import { ensureCaptionBase } from "@/lib/social/caption-base";
-import { ensureDevanagariFont } from "@/lib/social/hindi-font";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 import { craftHashtags } from "@/lib/social/hashtags";
 import { biasByTrends } from "@/lib/social/trends";
@@ -439,23 +438,31 @@ async function uploadReelFile(path: string): Promise<string | null> {
  * stitch one captioned image per beat into a video with ffmpeg. Returns the
  * hosted video + cover, or null (caller falls back to a silent reel).
  */
-/** Translate short caption lines into natural spoken Hindi (Devanagari), preserving order/count. */
-async function translateToHindi(lines: string[]): Promise<string[] | null> {
+/**
+ * Turn English caption lines into casual spoken Hinglish, returning BOTH:
+ *   - `deva`: Devanagari, for the TTS voiceover (best pronunciation)
+ *   - `roman`: romanised Latin, for the on-screen captions (easier to read)
+ * Same order/count as input, or null on failure.
+ */
+async function hindiForReel(lines: string[]): Promise<{ deva: string[]; roman: string[] } | null> {
   try {
-    const out = await geminiJson<{ hi: string[] }>(
+    const out = await geminiJson<{ deva: string[]; roman: string[] }>(
       `Rewrite each line as the everyday, casual spoken Hindi that ordinary Indians actually use in daily conversation ` +
-        `(Hinglish) — friendly and natural, NOT formal, literary or "shuddh"/Sanskritised Hindi. ` +
-        `Freely mix in the common English words Indians normally say (party, election, government, team, plan, market, video, etc.), ` +
-        `BUT write EVERYTHING in Devanagari script only — transliterate those English words into Devanagari (e.g. इलेक्शन, गवर्नमेंट, पार्टी, वीडियो, टीम). ` +
-        `Do NOT use any Latin/Roman letters or Latin digits; write any numbers in Devanagari numerals (जैसे १९४५) or in words. ` +
-        `Keep each line concise and faithful, SAME number of lines, SAME order. No quotes, no extra commentary.\n` +
+        `(Hinglish) — friendly and natural, NOT formal, literary or "shuddh"/Sanskritised Hindi. Freely mix in the common ` +
+        `English words Indians normally say (party, election, government, team, plan, market, video, etc.).\n` +
+        `For EACH line give two forms of the SAME sentence:\n` +
+        `- "deva": in Devanagari script (English loanwords transliterated, e.g. इलेक्शन, गवर्नमेंट, टीम; numbers in Devanagari numerals).\n` +
+        `- "roman": the SAME sentence in Roman/Latin letters as Indians casually type it (Hindi words spelled phonetically like "jeet gayi", "abhi", English words in normal English spelling like "election", "government"). ASCII only.\n` +
+        `Keep each concise and faithful, SAME number of lines, SAME order. No quotes, no extra commentary.\n` +
         `LINES (JSON array): ${JSON.stringify(lines)}\n` +
-        `Return ONLY JSON: {"hi":[ ... exactly ${lines.length} strings ... ]}`,
+        `Return ONLY JSON: {"deva":[ ... ${lines.length} ... ],"roman":[ ... ${lines.length} ... ]}`,
       0.5
     );
-    const hi = out?.hi;
-    if (Array.isArray(hi) && hi.length === lines.length && hi.every((s) => typeof s === "string" && s.trim())) {
-      return hi.map((s) => s.trim());
+    const deva = out?.deva;
+    const roman = out?.roman;
+    const ok = (a?: string[]) => Array.isArray(a) && a.length === lines.length && a.every((s) => typeof s === "string" && s.trim());
+    if (ok(deva) && ok(roman)) {
+      return { deva: deva!.map((s) => s.trim()), roman: roman!.map((s) => s.trim()) };
     }
   } catch {
     /* fall through */
@@ -472,32 +479,28 @@ async function reelFromBeats(
 ): Promise<{ videoUrl: string; coverUrl: string } | null> {
   if (beats.length < 2) return null;
 
-  // For Hindi reels, translate the on-screen captions + kicker to Devanagari and
-  // narrate that same Hindi text (so audio + subtitles match). If translation
-  // fails we quietly stay in English rather than drop the reel.
-  let captions = beats.map((b) => b.caption);
-  let kick = kicker;
-  let font: string | undefined;
-  let unicode = false;
+  // For Hindi reels: narrate from the Devanagari text (best pronunciation) but
+  // show ROMANISED captions on screen (easier to read). Kicker stays English.
+  // If translation fails we quietly stay in English rather than drop the reel.
+  let captions = beats.map((b) => b.caption); // on-screen text (roman for hi)
+  let narrationText = captions.join(" ");
   let narrationLang: "en" | "hi" = "en";
   if (lang === "hi") {
-    const hi = await translateToHindi([kicker, ...captions]);
-    if (hi) {
-      kick = hi[0];
-      captions = hi.slice(1);
-      font = await ensureDevanagariFont();
-      unicode = true;
+    const t = await hindiForReel(captions);
+    if (t) {
+      captions = t.roman;
+      narrationText = t.deva.join(" ");
       narrationLang = "hi";
     }
   }
 
-  const voice = await synthesizeNarration(captions.join(" "), { voiceSeed, lang: narrationLang });
+  const voice = await synthesizeNarration(narrationText, { voiceSeed, lang: narrationLang });
   if (!voice) return null;
   const baseId = await ensureCaptionBase();
   // Background moves (Ken-Burns); the caption is a static bottom strip on top.
   const scenes = beats.map((b, i) => ({
     bgUrl: sceneBgUrl(b.img.publicId),
-    captionUrl: captionStripUrl(baseId, { caption: captions[i], kicker: kick, accent, font, unicode }),
+    captionUrl: captionStripUrl(baseId, { caption: captions[i], kicker, accent }),
   }));
   const rendered = await renderNarratedReel({ scenes, audioUrl: voice.url, weights: captions.map((c) => c.length) });
   if (!rendered) return null;
