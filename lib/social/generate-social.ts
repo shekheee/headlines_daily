@@ -803,16 +803,16 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
 }
 
 /**
- * Narration language per reel, so roughly half our reels are in Hindi:
- *   - Indian politics → Hindi (resonates most with the core audience)
- *   - History → alternate day-by-day between Hindi and English
- *   - Recent/trending news → English
- * When lang is "hi" the on-screen captions AND the voiceover are Hindi.
+ * Narration language per reel. We narrate everything in warm spoken Hinglish
+ * (the most relatable style for our Indian audience) with the voiceover in
+ * Devanagari-backed Hindi for good pronunciation and romanised Latin captions
+ * on screen for easy reading.
  */
-function reelLang(kind: "history" | "politics" | "news", daySeed: number): "en" | "hi" {
-  if (kind === "politics") return "hi";
-  if (kind === "history") return daySeed % 2 === 0 ? "hi" : "en";
-  return "en";
+function reelLang(_kind: "history" | "politics" | "news", _daySeed: number): "en" | "hi" {
+  // All reels use the warm Hinglish narration (same Sulafat voice) with
+  // romanised on-screen captions — the most relatable/engaging style for our
+  // Indian audience. (Kept parameterised so we can re-tune per-type later.)
+  return "hi";
 }
 
 /** Map a UTC hour to a post type across the Indian day (IST = UTC+5:30). */
