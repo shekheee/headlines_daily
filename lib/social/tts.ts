@@ -10,8 +10,9 @@ const API = "https://generativelanguage.googleapis.com/v1beta";
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
 
 // Young, warm FEMALE narrator voices (prebuilt Gemini voices). Rotated for
-// variety unless GEMINI_TTS_VOICE pins a specific one. The Indian-English accent
-// itself is steered via the prompt below.
+// variety unless GEMINI_TTS_VOICE pins a specific one. NOTE: we intentionally do
+// NOT steer an accent via the prompt — asking the model for a specific accent
+// makes it refuse and return no audio (see synthesizeNarration).
 const NARRATOR_VOICES = ["Leda", "Achernar", "Sulafat", "Aoede", "Vindemiatrix", "Kore"];
 
 function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
@@ -51,30 +52,41 @@ export async function synthesizeNarration(
   if (!key || !cloudinaryReady || !script.trim()) return null;
 
   const voice = pickVoice(opts.voiceSeed ?? 0);
-  const prompt =
-    "You are a young Indian woman narrating a short video. Speak in natural Indian English " +
-    "with a clear, authentic Indian accent — warm, friendly and expressive, like a relatable " +
-    "girl telling a captivating story to a friend. Keep it vivid and human, with natural " +
-    "dramatic pauses. Do not read any labels or hashtags, just tell the story:\n\n" +
-    script;
 
-  // The preview TTS model is occasionally flaky/rate-limited, so retry a few times.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(`${API}/models/${TTS_MODEL}:generateContent?key=${key}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-          },
-        }),
-      });
-      if (res.ok) {
+  // IMPORTANT: keep the spoken text free of persona/accent instructions. The TTS
+  // model reliably refuses (finishReason "OTHER", NO audio) when the prompt asks
+  // it to impersonate a specific accent/ethnicity (e.g. "Indian English accent"),
+  // which silently produced audio-less reels. A neutral delivery directive is
+  // safe; the clean script alone is the most reliable, so we fall back to it.
+  const styled =
+    "Narrate this warmly and expressively, with natural dramatic pauses, like " +
+    "telling a captivating story to a friend. Do not read any labels or hashtags.\n\n" +
+    script;
+  const variants = [styled, script];
+
+  for (const text of variants) {
+    // The preview TTS model is occasionally flaky/rate-limited, so retry a few times.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(`${API}/models/${TTS_MODEL}:generateContent?key=${key}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+            },
+          }),
+        });
+        if (!res.ok) {
+          console.warn(`[tts] http ${res.status}: ${(await res.text()).slice(0, 160)}`);
+          await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
+          continue;
+        }
         const data = await res.json();
-        const part = (data?.candidates?.[0]?.content?.parts ?? []).find(
+        const cand = data?.candidates?.[0];
+        const part = (cand?.content?.parts ?? []).find(
           (p: { inlineData?: { data: string; mimeType?: string } }) => p.inlineData
         );
         const b64 = part?.inlineData?.data;
@@ -89,11 +101,16 @@ export async function synthesizeNarration(
           const url = up.secure_url || `https://res.cloudinary.com/${cloud}/video/upload/${up.public_id}.mp3`;
           return { publicId: up.public_id, durationSec: up.duration || 8, voice, url };
         }
+        // 200 but no audio (e.g. finishReason "OTHER") — retrying the SAME text
+        // won't help, so move straight to the next (simpler) variant.
+        console.warn(`[tts] no audio returned (finishReason=${cand?.finishReason}); trying next variant`);
+        break;
+      } catch (e) {
+        console.warn(`[tts] request error: ${e instanceof Error ? e.message : "unknown"}`);
+        await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
       }
-    } catch {
-      /* retry */
     }
-    await new Promise((r) => setTimeout(r, 2500));
   }
+  console.warn("[tts] narration unavailable after all variants");
   return null;
 }

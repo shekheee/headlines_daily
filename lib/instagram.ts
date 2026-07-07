@@ -43,20 +43,25 @@ export async function postComment(mediaId: string, message: string): Promise<boo
   }
 }
 
-/** Poll a media container until Instagram finishes fetching/processing the image. */
-async function waitForContainerReady(containerId: string, token: string, tries = 8): Promise<boolean> {
+/** Poll a media container until Instagram finishes fetching/processing the media. */
+async function waitForContainerReady(
+  containerId: string,
+  token: string,
+  tries = 8,
+  intervalMs = 2500
+): Promise<"FINISHED" | "ERROR" | "TIMEOUT"> {
   for (let i = 0; i < tries; i++) {
-    await sleep(2500);
+    await sleep(intervalMs);
     try {
       const res = await fetch(`${GRAPH}/${containerId}?fields=status_code&access_token=${token}`);
       const data = await res.json();
-      if (data.status_code === "FINISHED") return true;
-      if (data.status_code === "ERROR" || data.status_code === "EXPIRED") return false;
+      if (data.status_code === "FINISHED") return "FINISHED";
+      if (data.status_code === "ERROR" || data.status_code === "EXPIRED") return "ERROR";
     } catch {
       // keep polling
     }
   }
-  return true; // fall through and attempt publish anyway
+  return "TIMEOUT";
 }
 
 export async function postToInstagram(input: {
@@ -184,18 +189,31 @@ export async function postReel(input: { videoUrl: string; caption: string; first
     if (!createRes.ok || !createData.id) {
       return { posted: false, error: `reel container: ${JSON.stringify(createData).slice(0, 200)}` };
     }
-    // Video needs longer to transcode.
-    const ready = await waitForContainerReady(createData.id, token, 20);
-    if (!ready) return { posted: false, error: "reel container not ready (transcode failed)" };
-    const pubRes = await fetch(`${GRAPH}/${userId}/media_publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ creation_id: createData.id, access_token: token }),
-    });
-    const pubData = await pubRes.json();
-    if (!pubRes.ok || !pubData.id) return { posted: false, error: `reel publish: ${JSON.stringify(pubData).slice(0, 200)}` };
-    if (input.firstComment) await postComment(pubData.id, input.firstComment);
-    return { posted: true, id: pubData.id };
+    // Reels transcode slowly on Instagram's side — poll up to ~3 min.
+    const status = await waitForContainerReady(createData.id, token, 45, 4000);
+    if (status === "ERROR") return { posted: false, error: "reel container not ready (transcode failed)" };
+
+    // Even after FINISHED (or a timeout) the publish can transiently report
+    // 9007 "Media ID is not available" if IG hasn't fully committed the media.
+    // Wait + re-poll + retry a few times instead of giving up (which used to
+    // drop the whole reel).
+    let pubData: { id?: string; error?: { code?: number; error_subcode?: number } } = {};
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const pubRes = await fetch(`${GRAPH}/${userId}/media_publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creation_id: createData.id, access_token: token }),
+      });
+      pubData = await pubRes.json();
+      if (pubRes.ok && pubData.id) {
+        if (input.firstComment) await postComment(pubData.id, input.firstComment);
+        return { posted: true, id: pubData.id };
+      }
+      const notReady = pubData?.error?.code === 9007 || pubData?.error?.error_subcode === 2207027;
+      if (!notReady) break;
+      await waitForContainerReady(createData.id, token, 10, 5000);
+    }
+    return { posted: false, error: `reel publish: ${JSON.stringify(pubData).slice(0, 200)}` };
   } catch (e) {
     return { posted: false, error: e instanceof Error ? e.message : "unknown error" };
   }
