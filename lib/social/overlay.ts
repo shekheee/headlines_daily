@@ -49,6 +49,18 @@ export function encodeText(text: string): string {
   return encodeURIComponent(cleaned).replace(/%2C/g, "%252C").replace(/%2F/g, "%252F");
 }
 
+// Like encodeText but PRESERVES non-ASCII (Devanagari etc.) for Unicode fonts.
+// Only normalises whitespace/quotes and double-encodes the Cloudinary delimiters.
+export function encodeUnicodeText(text: string): string {
+  const cleaned = text
+    .replace(/[\r\n]+/g, " ")
+    .replace(/[“”«»„"]/g, "")
+    .replace(/[‘’]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+  return encodeURIComponent(cleaned).replace(/%2C/g, "%252C").replace(/%2F/g, "%252F");
+}
+
 export interface OverlayOptions {
   kicker?: string; // small label top-left, e.g. "MONDAY MOTIVATION"
   hook: string; // the big headline
@@ -156,19 +168,24 @@ const STRIP_H = 360;
  */
 export function captionStripUrl(
   baseId: string,
-  opts: { caption: string; kicker?: string; accent?: string }
+  opts: { caption: string; kicker?: string; accent?: string; font?: string; unicode?: boolean }
 ): string {
   const accent = opts.accent || "F5C518";
+  // A Unicode font (e.g. Devanagari for Hindi) has weight baked into the file,
+  // so we must NOT append the "_bold" style token, and text must keep non-ASCII.
+  const enc = opts.unicode ? encodeUnicodeText : encodeText;
+  const kFont = opts.font ? `${opts.font}_38` : `${FONT}_38_bold_letter_spacing_2`;
+  const cFont = opts.font ? `${opts.font}_50` : `${FONT}_50_bold_line_spacing_-2`;
   const t: string[] = [];
   // Semi-transparent rounded band (o_55) from the black base pixel.
   t.push(`w_${STRIP_W},h_${STRIP_H},c_scale,r_40,o_55`);
   if (opts.kicker) {
     t.push(
-      `co_rgb:${accent},l_text:${FONT}_38_bold_letter_spacing_2:${encodeText(opts.kicker.toUpperCase())},g_north_west,x_64,y_44,fl_layer_apply`
+      `co_rgb:${accent},l_text:${kFont}:${enc(opts.kicker.toUpperCase())},g_north_west,x_64,y_44,fl_layer_apply`
     );
   }
   t.push(
-    `co_white,l_text:${FONT}_50_bold_line_spacing_-2:${encodeText(opts.caption)},w_952,c_fit,g_south_west,x_64,y_48,fl_layer_apply`
+    `co_white,l_text:${cFont}:${enc(opts.caption)},w_952,c_fit,g_south_west,x_64,y_48,fl_layer_apply`
   );
   t.push("f_png");
   return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${baseId}`;

@@ -76,10 +76,15 @@ export async function renderNarratedReel(opts: {
     const filters: string[] = [];
     for (let i = 0; i < n; i++) {
       const frames = Math.round(durs[i] * FPS);
-      // Single still -> zoompan generates exactly `frames` frames (d=). Gentle
-      // centered Ken-Burns zoom on the BACKGROUND only.
+      // Gentle centered Ken-Burns zoom on the BACKGROUND only.
+      // IMPORTANT: zoompan positions in whole input pixels, so running it at the
+      // final 1080x1920 makes the center jump by ±1px between frames — a visible
+      // "shiver". We upscale the still 3x (to 3240x5760) FIRST so each frame's
+      // zoom center lands on a sub-pixel that averages out smoothly when zoompan
+      // downscales back to 1080x1920 (kept at 3x, not larger, to stay well within
+      // CI runner memory). `fps` is set on zoompan so it emits exactly `frames`.
       filters.push(
-        `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,` +
+        `[${i}:v]scale=3240:5760:force_original_aspect_ratio=increase,crop=3240:5760,setsar=1,` +
           `zoompan=z='min(zoom+0.0009,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=1080x1920:fps=${FPS}[bg${i}]`
       );
       // Overlay the static caption strip (single frame -> repeat for the scene).

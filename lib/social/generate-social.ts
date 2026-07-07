@@ -22,6 +22,7 @@ import { getArchiveStory } from "@/lib/social/archive";
 import { synthesizeNarration } from "@/lib/social/tts";
 import { renderNarratedReel } from "@/lib/social/ffmpeg-reel";
 import { ensureCaptionBase } from "@/lib/social/caption-base";
+import { ensureDevanagariFont } from "@/lib/social/hindi-font";
 import { accentFor, getStylePack, type StylePack } from "@/lib/social/rotation";
 import { craftHashtags } from "@/lib/social/hashtags";
 import { biasByTrends } from "@/lib/social/trends";
@@ -330,7 +331,7 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
 const NEWS_REEL_STYLE =
   "Cinematic, photorealistic, editorial news photography; clean composition, natural lighting, shallow depth of field, modern documentary look.";
 
-async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number, seed: number): Promise<PostDraft> {
+async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number, seed: number, lang: "en" | "hi" = "en"): Promise<PostDraft> {
   const story = await geminiJson<{ kicker: string; caption: string; scenes: { text: string; image: string }[] }>(
     `You are a video producer for an Indian news brand. Turn this ${a.categoryName} story into a short, engaging narrated Reel that feels like a complete mini-story.\n` +
       `HEADLINE: ${a.title}\nSUMMARY: ${a.excerpt || ""}\nARTICLE: ${stripHtml(a.content).slice(0, 2500)}\n\n` +
@@ -359,7 +360,7 @@ async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number
     if (img?.publicId) beats.push({ caption: s.text, img });
   }
 
-  const assembled = await reelFromBeats(beats, kicker, accent, seed);
+  const assembled = await reelFromBeats(beats, kicker, accent, seed, lang);
   if (assembled) {
     return { slideUrls: [], videoUrl: assembled.videoUrl, coverUrl: assembled.coverUrl, caption: cap, firstComment, usedSlugs: [a.slug], errors: [] };
   }
@@ -433,22 +434,64 @@ async function uploadReelFile(path: string): Promise<string | null> {
  * stitch one captioned image per beat into a video with ffmpeg. Returns the
  * hosted video + cover, or null (caller falls back to a silent reel).
  */
+/** Translate short caption lines into natural spoken Hindi (Devanagari), preserving order/count. */
+async function translateToHindi(lines: string[]): Promise<string[] | null> {
+  try {
+    const out = await geminiJson<{ hi: string[] }>(
+      `Translate each line into natural, spoken, conversational Hindi in Devanagari script. ` +
+        `Keep it concise and faithful. Return the SAME number of lines, in the SAME order. ` +
+        `Years/numbers may stay as digits. No quotes, no transliteration, no extra commentary.\n` +
+        `LINES (JSON array): ${JSON.stringify(lines)}\n` +
+        `Return ONLY JSON: {"hi":[ ... exactly ${lines.length} strings ... ]}`,
+      0.4
+    );
+    const hi = out?.hi;
+    if (Array.isArray(hi) && hi.length === lines.length && hi.every((s) => typeof s === "string" && s.trim())) {
+      return hi.map((s) => s.trim());
+    }
+  } catch {
+    /* fall through */
+  }
+  return null;
+}
+
 async function reelFromBeats(
   beats: { caption: string; img: { url: string; publicId: string } }[],
   kicker: string,
   accent: string,
-  voiceSeed: number
+  voiceSeed: number,
+  lang: "en" | "hi" = "en"
 ): Promise<{ videoUrl: string; coverUrl: string } | null> {
   if (beats.length < 2) return null;
-  const voice = await synthesizeNarration(beats.map((b) => b.caption).join(" "), { voiceSeed });
+
+  // For Hindi reels, translate the on-screen captions + kicker to Devanagari and
+  // narrate that same Hindi text (so audio + subtitles match). If translation
+  // fails we quietly stay in English rather than drop the reel.
+  let captions = beats.map((b) => b.caption);
+  let kick = kicker;
+  let font: string | undefined;
+  let unicode = false;
+  let narrationLang: "en" | "hi" = "en";
+  if (lang === "hi") {
+    const hi = await translateToHindi([kicker, ...captions]);
+    if (hi) {
+      kick = hi[0];
+      captions = hi.slice(1);
+      font = await ensureDevanagariFont();
+      unicode = true;
+      narrationLang = "hi";
+    }
+  }
+
+  const voice = await synthesizeNarration(captions.join(" "), { voiceSeed, lang: narrationLang });
   if (!voice) return null;
   const baseId = await ensureCaptionBase();
   // Background moves (Ken-Burns); the caption is a static bottom strip on top.
-  const scenes = beats.map((b) => ({
+  const scenes = beats.map((b, i) => ({
     bgUrl: sceneBgUrl(b.img.publicId),
-    captionUrl: captionStripUrl(baseId, { caption: b.caption, kicker, accent }),
+    captionUrl: captionStripUrl(baseId, { caption: captions[i], kicker: kick, accent, font, unicode }),
   }));
-  const rendered = await renderNarratedReel({ scenes, audioUrl: voice.url, weights: beats.map((b) => b.caption.length) });
+  const rendered = await renderNarratedReel({ scenes, audioUrl: voice.url, weights: captions.map((c) => c.length) });
   if (!rendered) return null;
   const hosted = await uploadReelFile(rendered.path);
   await rendered.cleanup();
@@ -458,7 +501,7 @@ async function reelFromBeats(
   return { videoUrl: hosted, coverUrl: sceneStillUrl(beats[0].img.publicId, { caption: beats[0].caption, kicker, accent }) };
 }
 
-async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date): Promise<{ draft: PostDraft; label: string }> {
+async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: number, date: Date, lang: "en" | "hi" = "en"): Promise<{ draft: PostDraft; label: string }> {
   const story = await getArchiveStory(date);
   if (!story) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["no archive story"] }, label: "From the Archives" };
 
@@ -487,7 +530,7 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   // Storytelling reel: young-Indian-woman voiceover + one image per beat with
   // its own caption, assembled by ffmpeg. Falls back to a silent single-image
   // reel if the voiceover or ffmpeg assembly is unavailable.
-  const assembled = await reelFromBeats(beats, story.kicker, accent, Math.floor(date.getTime() / 86_400_000));
+  const assembled = await reelFromBeats(beats, story.kicker, accent, Math.floor(date.getTime() / 86_400_000), lang);
   if (assembled) {
     return {
       draft: { slideUrls: [], videoUrl: assembled.videoUrl, coverUrl: assembled.coverUrl, caption: cap, firstComment, usedSlugs: [], errors: [] },
@@ -634,7 +677,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
   if (resolved === "reelpolitics") {
     const pol = await fetchArticleByCategory(["politics"], new Set());
     if (pol) {
-      const draft = await buildNarratedNewsReel(pol, accentFor(style, 2, date), 2, daySeed + 1);
+      const draft = await buildNarratedNewsReel(pol, accentFor(style, 2, date), 2, daySeed + 1, reelLang("politics", daySeed));
       return finalize(`Reel · ${pol.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: pol.slug, alsoStory: true }, opts.dryRun);
     }
     console.log("[social-slot] no politics article; falling back to a recent-news reel.");
@@ -645,7 +688,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
     const pool = (await fetchUnposted(8, 4)).filter((a) => a.categorySlug !== "history");
     const pick = (await biasByTrends(pool, (a) => `${a.title} ${a.excerpt ?? ""}`))[0];
     if (pick) {
-      const draft = await buildNarratedNewsReel(pick, accentFor(style, 3, date), 3, daySeed + 2);
+      const draft = await buildNarratedNewsReel(pick, accentFor(style, 3, date), 3, daySeed + 2, reelLang("news", daySeed));
       return finalize(`Reel · ${pick.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: pick.slug, alsoStory: true }, opts.dryRun);
     }
   }
@@ -653,7 +696,7 @@ export async function runSocialSlot(action?: string, date = new Date(), opts: { 
   // Reels lead with an evergreen "story from the past" (best for reach/saves).
   // If that can't be produced, fall through to a news-derived reel.
   if (resolved === "reel") {
-    const archive = await buildArchiveReel(accentFor(style, 1, date), style, 1, date);
+    const archive = await buildArchiveReel(accentFor(style, 1, date), style, 1, date, reelLang("history", daySeed));
     if (archive.draft.videoUrl) {
       return finalize(archive.label, "reel", "archive", archive.draft, { style: style.name, alsoStory: true }, opts.dryRun);
     }
@@ -692,14 +735,14 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
   const posts: SocialResult[] = [];
 
   // 1) History reel.
-  const archive = await buildArchiveReel(accentFor(style, 1, date), style, 1, date);
+  const archive = await buildArchiveReel(accentFor(style, 1, date), style, 1, date, reelLang("history", daySeed));
   posts.push(await finalize(archive.label, "reel", "archive", archive.draft, { style: style.name, alsoStory: true }, opts.dryRun));
 
   // 2) Indian-politics reel.
   const pol = await fetchArticleByCategory(["politics"], used);
   if (pol) {
     used.add(pol.slug);
-    const draft = await buildNarratedNewsReel(pol, accentFor(style, 2, date), 2, daySeed + 1);
+    const draft = await buildNarratedNewsReel(pol, accentFor(style, 2, date), 2, daySeed + 1, reelLang("politics", daySeed));
     posts.push(await finalize(`Reel · ${pol.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: pol.slug, alsoStory: true }, opts.dryRun));
   } else {
     posts.push({ ok: false, label: "Reel · Politics", kind: "reel", format: "news-story", slides: 0, instagram: { skipped: "no unposted politics article" }, errors: [] });
@@ -715,7 +758,7 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
   const other = candidates.find((a) => a.categorySlug !== "politics") ?? candidates[0];
   if (other) {
     used.add(other.slug);
-    const draft = await buildNarratedNewsReel(other, accentFor(style, 3, date), 3, daySeed + 2);
+    const draft = await buildNarratedNewsReel(other, accentFor(style, 3, date), 3, daySeed + 2, reelLang("news", daySeed));
     posts.push(await finalize(`Reel · ${other.categoryName}`, "reel", "news-story", draft, { style: style.name, articleSlug: other.slug }, opts.dryRun));
   } else {
     posts.push({ ok: false, label: "Reel · Recent", kind: "reel", format: "news-story", slides: 0, instagram: { skipped: "no unposted article" }, errors: [] });
@@ -723,6 +766,19 @@ export async function runReelBatch(date = new Date(), opts: { dryRun?: boolean }
 
   const posted = posts.filter((p) => p.ok).length;
   return { ok: posted > 0, date: date.toISOString().slice(0, 10), stylePack: style.name, posted, requested: 3, posts, tookMs: Date.now() - started };
+}
+
+/**
+ * Narration language per reel, so roughly half our reels are in Hindi:
+ *   - Indian politics → Hindi (resonates most with the core audience)
+ *   - History → alternate day-by-day between Hindi and English
+ *   - Recent/trending news → English
+ * When lang is "hi" the on-screen captions AND the voiceover are Hindi.
+ */
+function reelLang(kind: "history" | "politics" | "news", daySeed: number): "en" | "hi" {
+  if (kind === "politics") return "hi";
+  if (kind === "history") return daySeed % 2 === 0 ? "hi" : "en";
+  return "en";
 }
 
 /** Map a UTC hour to a post type across the Indian day (IST = UTC+5:30). */

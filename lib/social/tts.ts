@@ -47,7 +47,7 @@ function pickVoice(_seed: number): string {
  */
 export async function synthesizeNarration(
   script: string,
-  opts: { voiceSeed?: number } = {}
+  opts: { voiceSeed?: number; lang?: "en" | "hi" } = {}
 ): Promise<{ publicId: string; durationSec: number; voice: string; url: string } | null> {
   const key = process.env.GEMINI_API_KEY;
   const cloudinaryReady =
@@ -61,11 +61,15 @@ export async function synthesizeNarration(
   // it to impersonate a specific accent/ethnicity (e.g. "Indian English accent"),
   // which silently produced audio-less reels. A neutral delivery directive is
   // safe; the clean script alone is the most reliable, so we fall back to it.
+  // For Hindi we give the directive in Hindi too, matching the Devanagari script.
   const styled =
-    "Read this like a real person talking to a close friend: relaxed and " +
-    "conversational, warm and natural, with easy pacing and gentle emotion. Keep " +
-    "it human, never robotic or monotone. Do not read any labels or hashtags.\n\n" +
-    script;
+    opts.lang === "hi"
+      ? "किसी करीबी दोस्त को कहानी सुनाने के अंदाज़ में, सहज और गर्मजोशी भरे लहज़े में, " +
+        "स्वाभाविक ठहराव के साथ पढ़ें। कोई लेबल या हैशटैग न पढ़ें।\n\n" + script
+      : "Read this like a real person talking to a close friend: relaxed and " +
+        "conversational, warm and natural, with easy pacing and gentle emotion. Keep " +
+        "it human, never robotic or monotone. Do not read any labels or hashtags.\n\n" +
+        script;
   const variants = [styled, script];
 
   // Try the primary (pro) model first for quality, then flash as a fallback so a
