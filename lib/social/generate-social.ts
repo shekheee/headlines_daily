@@ -331,6 +331,11 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
 const NEWS_REEL_STYLE =
   "Cinematic, photorealistic, editorial news photography; clean composition, natural lighting, shallow depth of field, modern documentary look.";
 
+// Any people we depict must read as authentically Indian AND true to the story's
+// region/community — the image model otherwise defaults to generic Western faces.
+const INDIAN_PEOPLE_DIRECTIVE =
+  "If any people appear, they must be authentically Indian and true to the story's region, community and language group (for example Gujarati people for a Gujarat story, Punjabi people for a Punjab story, Tamil people for a Tamil Nadu story, Bengali people for a West Bengal story) — natural Indian faces, skin tones, hair, clothing and setting. Never depict white or Western-looking people.";
+
 async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number, seed: number, lang: "en" | "hi" = "en"): Promise<PostDraft> {
   const story = await geminiJson<{ kicker: string; caption: string; scenes: { text: string; image: string }[] }>(
     `You are a video producer for an Indian news brand. Turn this ${a.categoryName} story into a short, engaging narrated Reel that feels like a complete mini-story.\n` +
@@ -340,7 +345,7 @@ async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number
       `- Structure it as a story: a strong hook, then the key developments, then a takeaway. It must feel complete, not a bullet list.\n` +
       `- 4 to 5 beats. Each beat has:\n` +
       `   - "text": ONE spoken sentence, max ~16 words, plain natural spoken English, no hashtags/labels/emojis.\n` +
-      `   - "image": a DISTINCT, photorealistic editorial scene for that beat. Use symbolic/contextual scenes (parliament, crowds, maps, flags, documents, locations). Do NOT depict real, identifiable living politicians or private individuals. No text, no logos, no watermark.\n` +
+      `   - "image": a DISTINCT, photorealistic editorial scene for that beat. Use symbolic/contextual scenes (parliament, crowds, maps, flags, documents, locations). Do NOT depict real, identifiable living politicians or private individuals. When a scene includes people, state their specific Indian region/community and attire based on the story (e.g. "Gujarati crowd in traditional dress in Ahmedabad"). No text, no logos, no watermark.\n` +
       `- "kicker": a 2-4 word UPPERCASE label (e.g. "INDIAN POLITICS", "BREAKING").\n` +
       `- "caption": 2-3 punchy sentences for the Instagram caption.\n` +
       `Return ONLY JSON: {"kicker":"...","caption":"...","scenes":[{"text":"...","image":"..."}]}`,
@@ -356,7 +361,7 @@ async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number
   const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
   for (const s of story?.scenes ?? []) {
     if (!s?.text || !s?.image) continue;
-    const img = await generateAndHostImage(`${s.image}. ${NEWS_REEL_STYLE} No text, no logos, no watermark.`, "4:5");
+    const img = await generateAndHostImage(`${s.image}. ${NEWS_REEL_STYLE} ${INDIAN_PEOPLE_DIRECTIVE} No text, no logos, no watermark.`, "4:5");
     if (img?.publicId) beats.push({ caption: s.text, img });
   }
 
@@ -438,12 +443,15 @@ async function uploadReelFile(path: string): Promise<string | null> {
 async function translateToHindi(lines: string[]): Promise<string[] | null> {
   try {
     const out = await geminiJson<{ hi: string[] }>(
-      `Translate each line into natural, spoken, conversational Hindi in Devanagari script. ` +
-        `Keep it concise and faithful. Return the SAME number of lines, in the SAME order. ` +
-        `Years/numbers may stay as digits. No quotes, no transliteration, no extra commentary.\n` +
+      `Rewrite each line as the everyday, casual spoken Hindi that ordinary Indians actually use in daily conversation ` +
+        `(Hinglish) — friendly and natural, NOT formal, literary or "shuddh"/Sanskritised Hindi. ` +
+        `Freely mix in the common English words Indians normally say (party, election, government, team, plan, market, video, etc.), ` +
+        `BUT write EVERYTHING in Devanagari script only — transliterate those English words into Devanagari (e.g. इलेक्शन, गवर्नमेंट, पार्टी, वीडियो, टीम). ` +
+        `Do NOT use any Latin/Roman letters or Latin digits; write any numbers in Devanagari numerals (जैसे १९४५) or in words. ` +
+        `Keep each line concise and faithful, SAME number of lines, SAME order. No quotes, no extra commentary.\n` +
         `LINES (JSON array): ${JSON.stringify(lines)}\n` +
         `Return ONLY JSON: {"hi":[ ... exactly ${lines.length} strings ... ]}`,
-      0.4
+      0.5
     );
     const hi = out?.hi;
     if (Array.isArray(hi) && hi.length === lines.length && hi.every((s) => typeof s === "string" && s.trim())) {
@@ -515,7 +523,7 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   // them at once trips the image model's rate limit and they all fail.
   const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
   for (const s of story.scenes) {
-    const img = await generateAndHostImage(`${s.imagePrompt}.${who} ${HISTORY_STYLE} No text, no logos, no watermark.`, "4:5");
+    const img = await generateAndHostImage(`${s.imagePrompt}.${who} ${HISTORY_STYLE} ${INDIAN_PEOPLE_DIRECTIVE} No text, no logos, no watermark.`, "4:5");
     if (img?.publicId) beats.push({ caption: s.text, img });
   }
   if (!beats.length) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };

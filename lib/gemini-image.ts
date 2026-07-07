@@ -16,6 +16,7 @@ function buildImagePrompt(input: { title: string; category: string; excerpt?: st
     "Style: cinematic, photojournalistic, natural lighting, rich detail, 16:9 landscape composition suitable for a news website hero image.",
     "Strict rules: absolutely NO text, letters, numbers, captions, logos, or watermarks anywhere in the image.",
     "Do NOT depict real, identifiable public figures, politicians, or celebrities — use anonymous people or symbolic, contextual scenes instead.",
+    "If people appear, they should read as authentically Indian and appropriate to the story's region/community (natural Indian faces, skin tones, clothing, setting); avoid white or Western-looking people.",
     "Keep it tasteful, neutral and appropriate for a general news audience.",
   ]
     .filter(Boolean)
