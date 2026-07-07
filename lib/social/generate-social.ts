@@ -330,37 +330,46 @@ async function buildReelPost(a: Article, accent: string, style: StylePack, ctaSe
 const NEWS_REEL_STYLE =
   "Cinematic, photorealistic, editorial news photography; clean composition, natural lighting, shallow depth of field, modern documentary look.";
 
-// Any people we depict must read as authentically Indian AND true to the story's
-// region/community — the image model otherwise defaults to generic Western faces.
+// When a story IS about India/Indians, force authentically Indian, region-true
+// people (the image model otherwise defaults to generic Western faces).
 const INDIAN_PEOPLE_DIRECTIVE =
   "If any people appear, they must be authentically Indian and true to the story's region, community and language group (for example Gujarati people for a Gujarat story, Punjabi people for a Punjab story, Tamil people for a Tamil Nadu story, Bengali people for a West Bengal story) — natural Indian faces, skin tones, hair, clothing and setting. Never depict white or Western-looking people.";
 
+// When a story is NOT about India (e.g. a Belgium–USA match, a US election), the
+// people/place must match the ACTUAL story — never substitute Indian faces or
+// Indian settings into a foreign story.
+const NEUTRAL_PEOPLE_DIRECTIVE =
+  "Depict any people, teams, uniforms, flags and locations truthfully to the story's ACTUAL nationality, ethnicity and place as described in the scene. Do NOT substitute Indian people, Indian teams or Indian locations into a story that is set elsewhere or about non-Indians.";
+
 async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number, seed: number, lang: "en" | "hi" = "en"): Promise<PostDraft> {
-  const story = await geminiJson<{ kicker: string; caption: string; scenes: { text: string; image: string }[] }>(
+  const story = await geminiJson<{ kicker: string; caption: string; indiaStory: boolean; scenes: { text: string; image: string }[] }>(
     `You are a video producer for an Indian news brand. Turn this ${a.categoryName} story into a short, engaging narrated Reel that feels like a complete mini-story.\n` +
       `HEADLINE: ${a.title}\nSUMMARY: ${a.excerpt || ""}\nARTICLE: ${stripHtml(a.content).slice(0, 2500)}\n\n` +
       `RULES:\n` +
       `- Use ONLY facts from the article; never invent details.\n` +
       `- Structure it as a story: a strong hook, then the key developments, then a takeaway. It must feel complete, not a bullet list.\n` +
+      `- "indiaStory": true ONLY if the story is primarily about India, Indians or an Indian team/place; false for a foreign story (e.g. a Belgium vs USA match, a US election, a European summit).\n` +
       `- 4 to 5 beats. Each beat has:\n` +
       `   - "text": ONE spoken sentence, max ~16 words, plain natural spoken English, no hashtags/labels/emojis.\n` +
-      `   - "image": a DISTINCT, photorealistic editorial scene for that beat. Use symbolic/contextual scenes (parliament, crowds, maps, flags, documents, locations). Do NOT depict real, identifiable living politicians or private individuals. When a scene includes people, state their specific Indian region/community and attire based on the story (e.g. "Gujarati crowd in traditional dress in Ahmedabad"). No text, no logos, no watermark.\n` +
-      `- "kicker": a 2-4 word UPPERCASE label (e.g. "INDIAN POLITICS", "BREAKING").\n` +
+      `   - "image": a DISTINCT, photorealistic editorial scene for that beat. Use symbolic/contextual scenes (stadiums, crowds, maps, flags, documents, locations). Do NOT depict real, identifiable living politicians or private individuals. When a scene includes people, state the CORRECT nationality/region and attire for THIS story — e.g. for a Belgium vs USA football match, "Belgian and American players in their national kits"; for a Gujarat story, "Gujarati crowd in traditional dress in Ahmedabad". Match teams, kits, flags and settings to the real story. No text, no logos, no watermark.\n` +
+      `- "kicker": a 2-4 word UPPERCASE label (e.g. "INDIAN POLITICS", "WORLD CUP", "BREAKING").\n` +
       `- "caption": 2-3 punchy sentences for the Instagram caption.\n` +
-      `Return ONLY JSON: {"kicker":"...","caption":"...","scenes":[{"text":"...","image":"..."}]}`,
+      `Return ONLY JSON: {"kicker":"...","caption":"...","indiaStory":true|false,"scenes":[{"text":"...","image":"..."}]}`,
     0.6
   );
 
   const kicker = (story?.kicker || a.categoryName).toUpperCase().slice(0, 24);
   const cap = captionBody(story?.caption || a.excerpt || a.title, ctaSeed, APP_URL ? `${APP_URL}/articles/${a.slug}` : undefined);
   const firstComment = await craftHashtags(a.title, [a.categorySlug, "reels", "reelsindia"]);
+  // Only force Indian faces/settings when the story is actually about India.
+  const peopleDirective = story?.indiaStory === false ? NEUTRAL_PEOPLE_DIRECTIVE : INDIAN_PEOPLE_DIRECTIVE;
 
   // One distinct image per beat, generated sequentially (parallel trips the image
   // model's rate limit and they all fail).
   const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
   for (const s of story?.scenes ?? []) {
     if (!s?.text || !s?.image) continue;
-    const img = await generateAndHostImage(`${s.image}. ${NEWS_REEL_STYLE} ${INDIAN_PEOPLE_DIRECTIVE} No text, no logos, no watermark.`, "4:5");
+    const img = await generateAndHostImage(`${s.image}. ${NEWS_REEL_STYLE} ${peopleDirective} No text, no logos, no watermark.`, "4:5");
     if (img?.publicId) beats.push({ caption: s.text, img });
   }
 
@@ -521,12 +530,17 @@ async function buildArchiveReel(accent: string, style: StylePack, ctaSeed: numbe
   const HISTORY_STYLE =
     "Cinematic, photorealistic, period-accurate archival documentary photography; dramatic natural lighting, filmic warm tones, shallow depth of field.";
   const who = story.protagonist ? ` The main figure is ${story.protagonist}; keep their appearance consistent and recognisable.` : "";
+  // History must be period- and place-accurate: an Indian-history scene should
+  // show Indians, but a world-history scene (or one with British-era figures)
+  // must NOT be forced Indian. The named protagonist + scene descriptions carry
+  // the accuracy, so we only nudge toward Indian people for the India rotations.
+  const peopleDirective = story.flavor === "world" ? NEUTRAL_PEOPLE_DIRECTIVE : INDIAN_PEOPLE_DIRECTIVE;
 
   // One DISTINCT image per story beat. Generated sequentially — firing all of
   // them at once trips the image model's rate limit and they all fail.
   const beats: { caption: string; img: { url: string; publicId: string } }[] = [];
   for (const s of story.scenes) {
-    const img = await generateAndHostImage(`${s.imagePrompt}.${who} ${HISTORY_STYLE} ${INDIAN_PEOPLE_DIRECTIVE} No text, no logos, no watermark.`, "4:5");
+    const img = await generateAndHostImage(`${s.imagePrompt}.${who} ${HISTORY_STYLE} ${peopleDirective} No text, no logos, no watermark.`, "4:5");
     if (img?.publicId) beats.push({ caption: s.text, img });
   }
   if (!beats.length) return { draft: { slideUrls: [], caption: "", usedSlugs: [], errors: ["archive image failed"] }, label: story.kicker };

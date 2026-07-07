@@ -26,6 +26,9 @@ export interface ArchiveStory {
   // every scene can depict them consistently (empty if the event has no clear
   // human protagonist).
   protagonist: string;
+  // Which rotation produced this story. "world" stories can feature non-Indian
+  // figures/places, so callers should NOT force Indian imagery on them.
+  flavor: ArchiveFlavor;
 }
 
 const FLAVORS: ArchiveFlavor[] = ["onthisday", "political", "world"];
@@ -151,6 +154,7 @@ async function getArchiveStoryOnce(date = new Date()): Promise<ArchiveStory | nu
     narration,
     scenes,
     protagonist: (data.protagonist || "").trim(),
+    flavor,
   };
 }
 

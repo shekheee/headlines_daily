@@ -194,8 +194,13 @@ export function captionStripUrl(
   return `https://res.cloudinary.com/${CLOUD}/image/upload/${t.join("/")}/${baseId}`;
 }
 
-/** Vertical (from top) offset where the caption strip is overlaid on the reel. */
-export const STRIP_Y = RH - STRIP_H - 150;
+/**
+ * Vertical (from top) offset where the caption strip is overlaid on the reel.
+ * Instagram's Reel UI (username, caption, audio, action buttons + progress bar)
+ * covers roughly the bottom ~320px, so we keep the whole strip above that safe
+ * line — otherwise the subtitle is hidden behind the app chrome.
+ */
+export const STRIP_Y = RH - STRIP_H - 320;
 
 /**
  * Guaranteed 16:9 branded article image, built from a solid base pixel (see
