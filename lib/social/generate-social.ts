@@ -342,19 +342,28 @@ const NEUTRAL_PEOPLE_DIRECTIVE =
   "Depict any people, teams, uniforms, flags and locations truthfully to the story's ACTUAL nationality, ethnicity and place as described in the scene. Do NOT substitute Indian people, Indian teams or Indian locations into a story that is set elsewhere or about non-Indians.";
 
 async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number, seed: number, lang: "en" | "hi" = "en"): Promise<PostDraft> {
-  const story = await geminiJson<{ kicker: string; caption: string; indiaStory: boolean; scenes: { text: string; image: string }[] }>(
-    `You are a video producer for an Indian news brand. Turn this ${a.categoryName} story into a short, engaging narrated Reel that feels like a complete mini-story.\n` +
+  const story = await geminiJson<{ kicker: string; takeaway: string; caption: string; indiaStory: boolean; scenes: { text: string; image: string }[] }>(
+    `You are a top Indian Instagram Reels scriptwriter. Your reels go viral because a viewer INSTANTLY understands what the story is about and feels they must watch to the end — and can repeat the main point afterwards.\n` +
+      `Turn this ${a.categoryName} story into a narrated Reel.\n\n` +
       `HEADLINE: ${a.title}\nSUMMARY: ${a.excerpt || ""}\nARTICLE: ${stripHtml(a.content).slice(0, 2500)}\n\n` +
-      `RULES:\n` +
-      `- Use ONLY facts from the article; never invent details.\n` +
-      `- Structure it as a story: a strong hook, then the key developments, then a takeaway. It must feel complete, not a bullet list.\n` +
+      `STEP 1 — Decide the ONE thing a viewer must remember after watching (the "takeaway": a single, specific, plain-English sentence). Every beat must build toward it.\n\n` +
+      `REELS PSYCHOLOGY (follow strictly — this is why past reels felt unclear):\n` +
+      `- Beat 1 is THE HOOK and decides everything. In ONE line, make the SUBJECT unmistakable AND stop the scroll — a surprising fact, a real stake, or a sharp "what just happened". Name who/what it is about. NEVER a slow, generic intro.\n` +
+      `- Beat 2: give the essential context in one plain line — what is happening and why now.\n` +
+      `- Middle beats: deliver the key facts with CONCRETE specifics (real names, numbers, places, dates from the article). Each line should make the viewer want the next one.\n` +
+      `- Final beat: state the takeaway clearly — the "so what / why it matters" — then a 2-3 word nudge to follow for more.\n` +
+      `- Every sentence must be plain, concrete spoken language a normal person actually says. NO jargon, NO vague summaries, NO filler. If a line adds no new information, cut it.\n` +
+      `- It must be fully understandable with the sound OFF (captions carry the story).\n` +
+      `- Use ONLY facts from the article; never invent details.\n\n` +
+      `OUTPUT:\n` +
       `- "indiaStory": true ONLY if the story is primarily about India, Indians or an Indian team/place; false for a foreign story (e.g. a Belgium vs USA match, a US election, a European summit).\n` +
-      `- 4 to 5 beats. Each beat has:\n` +
-      `   - "text": ONE spoken sentence, max ~16 words, plain natural spoken English, no hashtags/labels/emojis.\n` +
+      `- 5 beats. Each beat has:\n` +
+      `   - "text": ONE spoken sentence, max ~14 words, clear and concrete. No hashtags/labels/emojis.\n` +
       `   - "image": a DISTINCT, photorealistic editorial scene for that beat. Use symbolic/contextual scenes (stadiums, crowds, maps, flags, documents, locations). Do NOT depict real, identifiable living politicians or private individuals. When a scene includes people, state the CORRECT nationality/region and attire for THIS story — e.g. for a Belgium vs USA football match, "Belgian and American players in their national kits"; for a Gujarat story, "Gujarati crowd in traditional dress in Ahmedabad". Match teams, kits, flags and settings to the real story. No text, no logos, no watermark.\n` +
       `- "kicker": a 2-4 word UPPERCASE label (e.g. "INDIAN POLITICS", "WORLD CUP", "BREAKING").\n` +
-      `- "caption": 2-3 punchy sentences for the Instagram caption.\n` +
-      `Return ONLY JSON: {"kicker":"...","caption":"...","indiaStory":true|false,"scenes":[{"text":"...","image":"..."}]}`,
+      `- "takeaway": the single-sentence core message from STEP 1.\n` +
+      `- "caption": lead with the takeaway, then 1-2 punchy sentences for the Instagram caption.\n` +
+      `Return ONLY JSON: {"kicker":"...","takeaway":"...","caption":"...","indiaStory":true|false,"scenes":[{"text":"...","image":"..."}]}`,
     0.6
   );
 
