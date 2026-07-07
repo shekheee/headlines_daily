@@ -7,13 +7,17 @@
 import { cloudinary } from "@/lib/cloudinary";
 
 const API = "https://generativelanguage.googleapis.com/v1beta";
-const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
 
-// Young, warm FEMALE narrator voices (prebuilt Gemini voices). Rotated for
-// variety unless GEMINI_TTS_VOICE pins a specific one. NOTE: we intentionally do
-// NOT steer an accent via the prompt — asking the model for a specific accent
-// makes it refuse and return no audio (see synthesizeNarration).
-const NARRATOR_VOICES = ["Leda", "Achernar", "Sulafat", "Aoede", "Vindemiatrix", "Kore"];
+// The "pro" TTS tier sounds noticeably more human than flash; flash is a faster
+// fallback if pro is unavailable/rate-limited. Override the primary via env.
+const PRIMARY_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-pro-preview-tts";
+const TTS_MODELS = [...new Set([PRIMARY_MODEL, "gemini-2.5-flash-preview-tts"])];
+
+// Warm FEMALE narrator voice. Pinned to "Sulafat" (chosen for its natural warmth)
+// unless GEMINI_TTS_VOICE overrides it. NOTE: we intentionally do NOT steer an
+// accent via the prompt — asking the model for a specific accent makes it refuse
+// and return no audio (see synthesizeNarration).
+const DEFAULT_VOICE = process.env.GEMINI_TTS_VOICE || "Sulafat";
 
 function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
   const h = Buffer.alloc(44);
@@ -33,9 +37,8 @@ function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
   return Buffer.concat([h, pcm]);
 }
 
-function pickVoice(seed: number): string {
-  if (process.env.GEMINI_TTS_VOICE) return process.env.GEMINI_TTS_VOICE;
-  return NARRATOR_VOICES[Math.abs(seed) % NARRATOR_VOICES.length];
+function pickVoice(_seed: number): string {
+  return DEFAULT_VOICE;
 }
 
 /**
@@ -59,55 +62,60 @@ export async function synthesizeNarration(
   // which silently produced audio-less reels. A neutral delivery directive is
   // safe; the clean script alone is the most reliable, so we fall back to it.
   const styled =
-    "Narrate this warmly and expressively, with natural dramatic pauses, like " +
-    "telling a captivating story to a friend. Do not read any labels or hashtags.\n\n" +
+    "Read this like a real person talking to a close friend: relaxed and " +
+    "conversational, warm and natural, with easy pacing and gentle emotion. Keep " +
+    "it human, never robotic or monotone. Do not read any labels or hashtags.\n\n" +
     script;
   const variants = [styled, script];
 
-  for (const text of variants) {
-    // The preview TTS model is occasionally flaky/rate-limited, so retry a few times.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const res = await fetch(`${API}/models/${TTS_MODEL}:generateContent?key=${key}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-            },
-          }),
-        });
-        if (!res.ok) {
-          console.warn(`[tts] http ${res.status}: ${(await res.text()).slice(0, 160)}`);
-          await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
-          continue;
-        }
-        const data = await res.json();
-        const cand = data?.candidates?.[0];
-        const part = (cand?.content?.parts ?? []).find(
-          (p: { inlineData?: { data: string; mimeType?: string } }) => p.inlineData
-        );
-        const b64 = part?.inlineData?.data;
-        if (b64) {
-          const rate = Number(/rate=(\d+)/.exec(part.inlineData.mimeType || "")?.[1] || 24000);
-          const wav = pcmToWav(Buffer.from(b64, "base64"), rate);
-          const up = await cloudinary.uploader.upload(`data:audio/wav;base64,${wav.toString("base64")}`, {
-            resource_type: "video",
-            folder: "daily-news/tts",
+  // Try the primary (pro) model first for quality, then flash as a fallback so a
+  // pro outage/rate-limit never drops us all the way back to a silent reel.
+  for (const model of TTS_MODELS) {
+    for (const text of variants) {
+      // The TTS model is occasionally flaky/rate-limited, so retry a few times.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch(`${API}/models/${model}:generateContent?key=${key}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text }] }],
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+              },
+            }),
           });
-          const cloud = process.env.CLOUDINARY_CLOUD_NAME;
-          const url = up.secure_url || `https://res.cloudinary.com/${cloud}/video/upload/${up.public_id}.mp3`;
-          return { publicId: up.public_id, durationSec: up.duration || 8, voice, url };
+          if (!res.ok) {
+            console.warn(`[tts] ${model} http ${res.status}: ${(await res.text()).slice(0, 160)}`);
+            await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
+            continue;
+          }
+          const data = await res.json();
+          const cand = data?.candidates?.[0];
+          const part = (cand?.content?.parts ?? []).find(
+            (p: { inlineData?: { data: string; mimeType?: string } }) => p.inlineData
+          );
+          const b64 = part?.inlineData?.data;
+          if (b64) {
+            const rate = Number(/rate=(\d+)/.exec(part.inlineData.mimeType || "")?.[1] || 24000);
+            const wav = pcmToWav(Buffer.from(b64, "base64"), rate);
+            const up = await cloudinary.uploader.upload(`data:audio/wav;base64,${wav.toString("base64")}`, {
+              resource_type: "video",
+              folder: "daily-news/tts",
+            });
+            const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+            const url = up.secure_url || `https://res.cloudinary.com/${cloud}/video/upload/${up.public_id}.mp3`;
+            return { publicId: up.public_id, durationSec: up.duration || 8, voice, url };
+          }
+          // 200 but no audio (e.g. finishReason "OTHER") — retrying the SAME text
+          // won't help, so move straight to the next (simpler) variant.
+          console.warn(`[tts] ${model} no audio (finishReason=${cand?.finishReason}); trying next variant`);
+          break;
+        } catch (e) {
+          console.warn(`[tts] ${model} request error: ${e instanceof Error ? e.message : "unknown"}`);
+          await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
         }
-        // 200 but no audio (e.g. finishReason "OTHER") — retrying the SAME text
-        // won't help, so move straight to the next (simpler) variant.
-        console.warn(`[tts] no audio returned (finishReason=${cand?.finishReason}); trying next variant`);
-        break;
-      } catch (e) {
-        console.warn(`[tts] request error: ${e instanceof Error ? e.message : "unknown"}`);
-        await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
       }
     }
   }
