@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BrandMark } from "@/components/public/BrandMark";
+import { VisitorCounter } from "@/components/public/VisitorCounter";
 import { Rss } from "lucide-react";
 
 async function getFooterCategories() {
@@ -109,6 +110,11 @@ export async function PublicFooter() {
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* Visitor counter */}
+      <div className="border-t border-gray-800">
+        <VisitorCounter />
       </div>
 
       {/* Copyright */}

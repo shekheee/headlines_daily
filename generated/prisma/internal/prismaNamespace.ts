@@ -393,6 +393,7 @@ export const ModelName = {
   Article: 'Article',
   SocialPost: 'SocialPost',
   AccountSnapshot: 'AccountSnapshot',
+  SiteCounter: 'SiteCounter',
   Ad: 'Ad',
   BreakingNews: 'BreakingNews',
   Media: 'Media'
@@ -411,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "account" | "session" | "verificationToken" | "user" | "category" | "tag" | "article" | "socialPost" | "accountSnapshot" | "ad" | "breakingNews" | "media"
+    modelProps: "account" | "session" | "verificationToken" | "user" | "category" | "tag" | "article" | "socialPost" | "accountSnapshot" | "siteCounter" | "ad" | "breakingNews" | "media"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1081,6 +1082,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SiteCounter: {
+      payload: Prisma.$SiteCounterPayload<ExtArgs>
+      fields: Prisma.SiteCounterFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SiteCounterFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SiteCounterFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>
+        }
+        findFirst: {
+          args: Prisma.SiteCounterFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SiteCounterFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>
+        }
+        findMany: {
+          args: Prisma.SiteCounterFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>[]
+        }
+        create: {
+          args: Prisma.SiteCounterCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>
+        }
+        createMany: {
+          args: Prisma.SiteCounterCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SiteCounterCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>[]
+        }
+        delete: {
+          args: Prisma.SiteCounterDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>
+        }
+        update: {
+          args: Prisma.SiteCounterUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>
+        }
+        deleteMany: {
+          args: Prisma.SiteCounterDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SiteCounterUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SiteCounterUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>[]
+        }
+        upsert: {
+          args: Prisma.SiteCounterUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteCounterPayload>
+        }
+        aggregate: {
+          args: Prisma.SiteCounterAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSiteCounter>
+        }
+        groupBy: {
+          args: Prisma.SiteCounterGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SiteCounterGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SiteCounterCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SiteCounterCountAggregateOutputType> | number
+        }
+      }
+    }
     Ad: {
       payload: Prisma.$AdPayload<ExtArgs>
       fields: Prisma.AdFieldRefs
@@ -1477,6 +1552,16 @@ export const AccountSnapshotScalarFieldEnum = {
 export type AccountSnapshotScalarFieldEnum = (typeof AccountSnapshotScalarFieldEnum)[keyof typeof AccountSnapshotScalarFieldEnum]
 
 
+export const SiteCounterScalarFieldEnum = {
+  id: 'id',
+  totalViews: 'totalViews',
+  uniqueVisitors: 'uniqueVisitors',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SiteCounterScalarFieldEnum = (typeof SiteCounterScalarFieldEnum)[keyof typeof SiteCounterScalarFieldEnum]
+
+
 export const AdScalarFieldEnum = {
   id: 'id',
   title: 'title',
@@ -1779,6 +1864,7 @@ export type GlobalOmitConfig = {
   article?: Prisma.ArticleOmit
   socialPost?: Prisma.SocialPostOmit
   accountSnapshot?: Prisma.AccountSnapshotOmit
+  siteCounter?: Prisma.SiteCounterOmit
   ad?: Prisma.AdOmit
   breakingNews?: Prisma.BreakingNewsOmit
   media?: Prisma.MediaOmit

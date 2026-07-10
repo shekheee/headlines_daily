@@ -192,6 +192,17 @@ model AccountSnapshot {
 }
 
 // ─────────────────────────────────────────────────────────
+//  Site-wide visitor counters (singleton row, id = "global")
+// ─────────────────────────────────────────────────────────
+
+model SiteCounter {
+  id             String   @id @default("global")
+  totalViews     Int      @default(0) // every page view
+  uniqueVisitors Int      @default(0) // distinct browsers (first-visit cookie)
+  updatedAt      DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────
 //  Ads
 // ─────────────────────────────────────────────────────────
 

@@ -60,6 +60,7 @@ export const ModelName = {
   Article: 'Article',
   SocialPost: 'SocialPost',
   AccountSnapshot: 'AccountSnapshot',
+  SiteCounter: 'SiteCounter',
   Ad: 'Ad',
   BreakingNews: 'BreakingNews',
   Media: 'Media'
@@ -214,6 +215,16 @@ export const AccountSnapshotScalarFieldEnum = {
 } as const
 
 export type AccountSnapshotScalarFieldEnum = (typeof AccountSnapshotScalarFieldEnum)[keyof typeof AccountSnapshotScalarFieldEnum]
+
+
+export const SiteCounterScalarFieldEnum = {
+  id: 'id',
+  totalViews: 'totalViews',
+  uniqueVisitors: 'uniqueVisitors',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SiteCounterScalarFieldEnum = (typeof SiteCounterScalarFieldEnum)[keyof typeof SiteCounterScalarFieldEnum]
 
 
 export const AdScalarFieldEnum = {

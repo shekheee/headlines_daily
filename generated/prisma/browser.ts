@@ -63,6 +63,11 @@ export type SocialPost = Prisma.SocialPostModel
  */
 export type AccountSnapshot = Prisma.AccountSnapshotModel
 /**
+ * Model SiteCounter
+ * 
+ */
+export type SiteCounter = Prisma.SiteCounterModel
+/**
  * Model Ad
  * 
  */
