@@ -347,8 +347,10 @@ async function buildNarratedNewsReel(a: Article, accent: string, ctaSeed: number
       `Turn this ${a.categoryName} story into a narrated Reel.\n\n` +
       `HEADLINE: ${a.title}\nSUMMARY: ${a.excerpt || ""}\nARTICLE: ${stripHtml(a.content).slice(0, 2500)}\n\n` +
       `STEP 1 — Decide the ONE thing a viewer must remember after watching (the "takeaway": a single, specific, plain-English sentence). Every beat must build toward it.\n\n` +
+      `GOLDEN RULE: be exactly ONE step ahead of the viewer, never ten — close enough to instantly understand, new enough to matter. We win on clarity and execution, not cleverness. Start from what the audience ALREADY knows/feels, then add the one new angle.\n` +
       `REELS PSYCHOLOGY (follow strictly — this is why past reels felt unclear):\n` +
-      `- Beat 1 is THE HOOK and decides everything. In ONE line, make the SUBJECT unmistakable AND stop the scroll — a surprising fact, a real stake, or a sharp "what just happened". Name who/what it is about. NEVER a slow, generic intro.\n` +
+      `- Beat 1 is THE HOOK and owns the first 4 seconds — it decides everything. FIRST anchor in something the viewer already recognises (a known name, an event/headline they've seen, or a shared feeling) so it lands instantly; THEN, in the same line, add the ONE surprising fact or real stake that makes it new. Name who/what it is about. NEVER open with an unfamiliar name/jargon or a slow, generic intro.\n` +
+      `- 4-SECOND CONTRACT: a stranger scrolling with the sound OFF must grasp WHO/WHAT this is about AND WHY it matters from Beat 1 alone. If they'd have to think or wait, rewrite it.\n` +
       `- Beat 2: give the essential context in one plain line — what is happening and why now.\n` +
       `- Middle beats: deliver the key facts with CONCRETE specifics (real names, numbers, places, dates from the article). Each line should make the viewer want the next one.\n` +
       `- Final beat: state the takeaway clearly — the "so what / why it matters" — then a 2-3 word nudge to follow for more.\n` +
