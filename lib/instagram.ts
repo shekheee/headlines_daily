@@ -302,6 +302,19 @@ export async function getAccountStats(): Promise<AccountStats | null> {
   }
 }
 
+/** Public permalink for a media item (so a human can open it and Archive in-app). */
+export async function getMediaPermalink(mediaId: string): Promise<string | null> {
+  if (!isInstagramConfigured()) return null;
+  const token = process.env.IG_ACCESS_TOKEN!;
+  try {
+    const res = await fetch(`${GRAPH}/${mediaId}?fields=permalink&access_token=${token}`);
+    const data = await res.json();
+    return res.ok && data.permalink ? String(data.permalink) : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface MediaInsights {
   likes?: number;
   reach?: number;

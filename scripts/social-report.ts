@@ -14,6 +14,12 @@ async function main() {
   r.byFormat.forEach((f) => console.log(`  ${f.format.padEnd(16)} avg ${String(f.avgEngagement).padStart(6)}  (${f.posts})`));
   console.log("\nTop posts:");
   r.topPosts.forEach((p) => console.log(`  ${p.format.padEnd(14)} eng ${String(p.engagement).padStart(4)}  ${p.articleSlug ?? p.theme ?? ""}`));
+  if (r.worstPosts.length) {
+    console.log(`\nWorst performers — consider archiving in-app (avg reach ~${r.recentAvgReach}):`);
+    r.worstPosts.forEach((p) =>
+      console.log(`  ${p.format.padEnd(14)} ${String(p.reach).padStart(6)} views (${p.pctOfAvg}% of avg)  ${p.permalink ?? p.articleSlug ?? p.theme ?? ""}`)
+    );
+  }
   console.log("\nRecommendations:");
   r.recommendations.forEach((rec) => console.log(`  -> ${rec}`));
   console.log("===================================\n");

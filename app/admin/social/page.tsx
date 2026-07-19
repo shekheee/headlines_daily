@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Share2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Share2, TrendingUp, TrendingDown, Minus, Archive, ExternalLink } from "lucide-react";
 import { buildWeeklyReport } from "@/lib/social/report";
 import { formatTimeAgo } from "@/lib/utils";
 
@@ -142,6 +142,59 @@ export default async function SocialReportPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Worst performers — archive candidates */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Archive className="h-5 w-5 text-amber-600" />
+            Worst performers — consider archiving
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Posts pulling below half your recent average reach{r.recentAvgReach ? ` (~${r.recentAvgReach} views)` : ""}. Instagram has no
+            archive API, so open each one and tap <span className="font-medium">⋯ → Archive</span> — it stays recoverable.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {r.worstPosts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing to prune — no matured post is clearly below average (need at least ~8 posts older than 10 days with insights).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {r.worstPosts.map((p) => (
+                <div key={p.igMediaId} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] capitalize">{p.format}</Badge>
+                      <span className="text-xs text-muted-foreground">{formatTimeAgo(p.postedAt)}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{p.articleSlug ?? p.theme ?? "—"}</div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 pl-3">
+                    <div className="text-right">
+                      <div className="font-semibold text-sm">{p.reach} views</div>
+                      <div className="text-[10px] text-amber-600">{p.pctOfAvg}% of avg</div>
+                    </div>
+                    {p.permalink ? (
+                      <a
+                        href={p.permalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                      >
+                        Open <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">no link</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recommendations */}
       <Card>
