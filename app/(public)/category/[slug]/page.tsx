@@ -5,7 +5,7 @@ import { ArticleCard } from "@/components/public/ArticleCard";
 import { AdSlot } from "@/components/public/AdSlot";
 import type { Metadata } from "next";
 
-export const revalidate = 60; // revalidate every minute
+export const revalidate = 300; // 5-min ISR — fewer DB regenerations (Neon compute)
 
 interface Props {
   params: Promise<{ slug: string }>;
