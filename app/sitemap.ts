@@ -4,17 +4,25 @@ import type { MetadataRoute } from "next";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
 
-  const [articles, categories] = await Promise.all([
-    prisma.article.findMany({
-      where: { status: "PUBLISHED" },
-      select: { slug: true, updatedAt: true, publishedAt: true, featuredImage: true },
-      orderBy: { publishedAt: "desc" },
-      take: 10000,
-    }),
-    prisma.category.findMany({
-      select: { slug: true },
-    }),
-  ]);
+  // Degrade to the static routes if the DB is unreachable/over-quota rather than
+  // failing the build; the next successful revalidate rebuilds the full sitemap.
+  let articles: { slug: string; updatedAt: Date | null; publishedAt: Date | null; featuredImage: string | null }[] = [];
+  let categories: { slug: string }[] = [];
+  try {
+    [articles, categories] = await Promise.all([
+      prisma.article.findMany({
+        where: { status: "PUBLISHED" },
+        select: { slug: true, updatedAt: true, publishedAt: true, featuredImage: true },
+        orderBy: { publishedAt: "desc" },
+        take: 10000,
+      }),
+      prisma.category.findMany({
+        select: { slug: true },
+      }),
+    ]);
+  } catch {
+    /* DB unavailable — return static routes only */
+  }
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${appUrl}/`, lastModified: new Date(), changeFrequency: "hourly", priority: 1 },

@@ -7,19 +7,31 @@ export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://example.com";
   const appName = process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate";
 
-  const articles = await prisma.article.findMany({
-    where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
-    orderBy: { publishedAt: "desc" },
-    take: 50,
-    select: {
-      title: true,
-      slug: true,
-      excerpt: true,
-      publishedAt: true,
-      author: { select: { name: true } },
-      category: { select: { name: true } },
-    },
-  });
+  let articles: {
+    title: string;
+    slug: string;
+    excerpt: string | null;
+    publishedAt: Date | null;
+    author: { name: string | null };
+    category: { name: string } | null;
+  }[] = [];
+  try {
+    articles = await prisma.article.findMany({
+      where: { status: "PUBLISHED", publishedAt: { lte: new Date() } },
+      orderBy: { publishedAt: "desc" },
+      take: 50,
+      select: {
+        title: true,
+        slug: true,
+        excerpt: true,
+        publishedAt: true,
+        author: { select: { name: true } },
+        category: { select: { name: true } },
+      },
+    });
+  } catch {
+    /* DB unavailable — emit an empty but valid feed */
+  }
 
   const items = articles
     .map((a) => {

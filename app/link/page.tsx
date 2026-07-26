@@ -14,6 +14,14 @@ export const metadata: Metadata = {
 export const revalidate = 120;
 
 async function getData() {
+  try {
+    return await fetchData();
+  } catch {
+    return { categories: [], latest: [] };
+  }
+}
+
+async function fetchData() {
   const [categories, latest] = await Promise.all([
     prisma.category.findMany({
       where: { parentId: null, articles: { some: { status: "PUBLISHED" } } },

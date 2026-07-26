@@ -4,6 +4,7 @@
 //   npx tsx scripts/social-insights.ts
 import "dotenv/config";
 import { refreshInsightsAndSummarize } from "@/lib/social/generate-social";
+import { exitForError } from "@/lib/db-quota";
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -18,7 +19,4 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((e) => {
-    console.error("[insights] FAILED:", e);
-    process.exit(1);
-  });
+  .catch((e) => exitForError("insights", e));

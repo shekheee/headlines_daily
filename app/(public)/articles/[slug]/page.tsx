@@ -10,7 +10,11 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbSchema, newsArticleSchema, stripHtml } from "@/lib/seo";
 
-export const revalidate = 300; // revalidate every 5 minutes
+// Article bodies are immutable after publish, so cache aggressively. Crawlers
+// hit the long tail of ~800 article URLs constantly; a short window made each
+// one re-query Neon every few minutes and kept the DB awake. 24h ISR means each
+// page regenerates at most once/day (rare admin edits appear within a day).
+export const revalidate = 86400;
 
 interface Props {
   params: Promise<{ slug: string }>;

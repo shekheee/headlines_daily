@@ -2,6 +2,7 @@
 //   npx tsx scripts/social-report.ts
 import "dotenv/config";
 import { buildWeeklyReport } from "@/lib/social/report";
+import { exitForError } from "@/lib/db-quota";
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -27,7 +28,4 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((e) => {
-    console.error("[report] FAILED:", e);
-    process.exit(1);
-  });
+  .catch((e) => exitForError("report", e));

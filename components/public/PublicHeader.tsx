@@ -6,11 +6,18 @@ import { BrandMark } from "@/components/public/BrandMark";
 import { Search } from "lucide-react";
 
 async function getCategories() {
-  return prisma.category.findMany({
-    where: { parentId: null, articles: { some: { status: "PUBLISHED" } } },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    take: 9,
-  });
+  // Nav is non-critical: if the DB is unreachable/over-quota, degrade to an
+  // empty nav rather than crashing the render (which would also fail the build
+  // when it prerenders static pages that share this layout).
+  try {
+    return await prisma.category.findMany({
+      where: { parentId: null, articles: { some: { status: "PUBLISHED" } } },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      take: 9,
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function PublicHeader() {

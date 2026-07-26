@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { APP_NAME, APP_URL } from "@/lib/seo";
 
-export const revalidate = 600; // refresh every 10 min
+export const revalidate = 1800; // refresh every 30 min (fewer crawler-driven DB hits)
 
 function xmlEscape(s: string): string {
   return s
@@ -16,12 +16,17 @@ function xmlEscape(s: string): string {
 
 export async function GET() {
   const since = new Date(Date.now() - 48 * 3600_000);
-  const articles = await prisma.article.findMany({
-    where: { status: "PUBLISHED", publishedAt: { gte: since } },
-    orderBy: { publishedAt: "desc" },
-    take: 1000,
-    select: { slug: true, title: true, publishedAt: true },
-  });
+  let articles: { slug: string; title: string; publishedAt: Date | null }[] = [];
+  try {
+    articles = await prisma.article.findMany({
+      where: { status: "PUBLISHED", publishedAt: { gte: since } },
+      orderBy: { publishedAt: "desc" },
+      take: 1000,
+      select: { slug: true, title: true, publishedAt: true },
+    });
+  } catch {
+    /* DB unavailable — emit an empty but valid news sitemap */
+  }
 
   const items = articles
     .map(

@@ -5,11 +5,17 @@ import { VisitorCounter } from "@/components/public/VisitorCounter";
 import { Rss } from "lucide-react";
 
 async function getFooterCategories() {
-  return prisma.category.findMany({
-    where: { articles: { some: { status: "PUBLISHED" } } },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    take: 12,
-  });
+  // Non-critical: degrade to no category links if the DB is unreachable/over-quota
+  // rather than crashing the render (and the static-page build).
+  try {
+    return await prisma.category.findMany({
+      where: { articles: { some: { status: "PUBLISHED" } } },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      take: 12,
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function PublicFooter() {

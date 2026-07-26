@@ -4,6 +4,7 @@
 //   SOCIAL_DRY_RUN=1 npx tsx scripts/social-slot.ts
 import "dotenv/config";
 import { runReelBatch, runSocialSlot } from "@/lib/social/generate-social";
+import { exitForError } from "@/lib/db-quota";
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -29,7 +30,4 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((e) => {
-    console.error("[social-slot] FAILED:", e);
-    process.exit(1);
-  });
+  .catch((e) => exitForError("social-slot", e));

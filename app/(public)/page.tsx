@@ -10,15 +10,25 @@ export const metadata: Metadata = {
   description: "Your trusted source for headlines, breaking stories, and in-depth analysis.",
 };
 
-// 5-min ISR: articles are generated ~once/day, so this is plenty fresh while
+// 15-min ISR: articles are generated ~once/day, so this is plenty fresh while
 // keeping background regenerations (and Neon compute wake-ups) to a minimum.
-export const revalidate = 300;
+export const revalidate = 900;
 
 // History is evergreen and lives in its own section — it shouldn't lead the
 // homepage as breaking/top news.
 const NEWS_ONLY = { NOT: { category: { slug: "history" } } } as const;
 
 async function getHomeData() {
+  try {
+    return await fetchHomeData();
+  } catch {
+    // DB unreachable/over-quota: render a valid (empty) page instead of crashing
+    // the build/render. ISR will fill it in on the next successful revalidate.
+    return { featuredArticles: [], categories: [], latestArticles: [], trendingArticles: [] };
+  }
+}
+
+async function fetchHomeData() {
   const [featuredArticles, categories, latestArticles, trendingArticles] = await Promise.all([
     prisma.article.findMany({
       where: { status: "PUBLISHED", publishedAt: { lte: new Date() }, ...NEWS_ONLY },

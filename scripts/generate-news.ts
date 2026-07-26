@@ -5,6 +5,7 @@
 // GEMINI_MODEL, NEXT_PUBLIC_APP_URL, IG_USER_ID, IG_ACCESS_TOKEN, GENERATE_LIMIT).
 import "dotenv/config";
 import { DEFAULT_MAX_PER_RUN, generateDailyNews } from "@/lib/generate-news";
+import { exitForError } from "@/lib/db-quota";
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -21,7 +22,4 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((e) => {
-    console.error("[generate-news] FAILED:", e);
-    process.exit(1);
-  });
+  .catch((e) => exitForError("generate-news", e));
