@@ -4,6 +4,13 @@ const whorl = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' 
 
 // Raster publisher logo for Google News / schema.org ImageObject.
 // Served at /logo.png. Point NEXT_PUBLIC_LOGO_URL at "/logo.png".
+//
+// The logo never changes, but it's referenced in the JSON-LD on every article,
+// so crawlers/social scrapers fetch it a lot. Prerender it once (force-static)
+// and let the CDN cache it forever so we don't spend Fluid Active CPU rendering
+// the same image on every hit.
+export const dynamic = "force-static";
+
 export function GET() {
   return new ImageResponse(
     (
@@ -38,6 +45,10 @@ export function GET() {
         </div>
       </div>
     ),
-    { width: 600, height: 160 }
+    {
+      width: 600,
+      height: 160,
+      headers: { "Cache-Control": "public, max-age=31536000, immutable" },
+    }
   );
 }

@@ -36,10 +36,11 @@ export default auth((req) => {
   }
 });
 
+// Only run auth middleware where it's actually needed. The old catch-all matcher
+// ran this edge function on EVERY request (all article pages, every crawler hit,
+// every API route), which burns Vercel Fluid Active CPU for no reason — the logic
+// below only guards /admin and /auth. Scoping to those paths means public/crawler
+// traffic no longer invokes middleware at all.
 export const config = {
-  matcher: [
-    "/admin/:path*",
-    "/auth/:path*",
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
-  ],
+  matcher: ["/admin/:path*", "/auth/:path*"],
 };
