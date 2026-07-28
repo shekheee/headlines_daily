@@ -37,8 +37,27 @@ export async function craftHashtags(topic: string, extra: string[] = []): Promis
   } catch {
     /* fall back below */
   }
-  const all = [...CORE, ...extra, ...picked].map(sanitize).filter(Boolean);
-  const deduped = Array.from(new Set(all)).filter((t) => t.length > 3 && t.length <= 31);
-  // 12-15 tiered tags is the sweet spot for a small account's discovery.
-  return deduped.slice(0, 15).join(" ");
+  // Always keep the brand core + caller hints; then add a SHUFFLED, VARIABLE-SIZE
+  // subset of the AI tags. Emitting a different set/order/size every post avoids
+  // the "identical hashtag block" fingerprint (a shadowban risk) and keeps the
+  // count in the leaner, less-spammy range Instagram now favours.
+  const base = Array.from(new Set([...CORE, ...extra].map(sanitize).filter(Boolean)));
+  const pool = shuffle(
+    Array.from(new Set(picked.map(sanitize).filter((t) => t && !base.includes(t))))
+  );
+  const target = 6 + Math.floor(Math.random() * 6); // 6–11 total
+  const combined = [...base, ...pool]
+    .filter((t) => t.length > 3 && t.length <= 31)
+    .slice(0, target);
+  return combined.join(" ");
+}
+
+/** Fisher–Yates shuffle (so the tag order/selection differs every post). */
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }

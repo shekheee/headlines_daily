@@ -1,8 +1,9 @@
 // Anti-repetition engine.
 //
-// Every 2 weeks the whole Instagram look rotates to a different "style pack":
-// a new photographic aesthetic + a new color palette. Within a single day's
-// batch, accent colors also cycle so no two posts look identical.
+// Every WEEK the whole Instagram look rotates to a different "style pack": a new
+// photographic aesthetic + a new color palette. (Weekly, not fortnightly, so the
+// feed looks less templated/automated to both viewers and the algorithm.) Within
+// a single day's batch, accent colors also cycle so no two posts look identical.
 //
 // To add variety over time, just append more packs below — the rotation picks
 // them up automatically.
@@ -54,18 +55,18 @@ export const STYLE_PACKS: StylePack[] = [
 
 const DAY_MS = 86_400_000;
 
-/** Which fortnight bucket a date falls in (changes every 14 days). */
-export function fortnightIndex(date = new Date()): number {
-  return Math.floor(date.getTime() / DAY_MS / 14);
+/** Which weekly bucket a date falls in (changes every 7 days). */
+export function rotationIndex(date = new Date()): number {
+  return Math.floor(date.getTime() / DAY_MS / 7);
 }
 
-/** The active style pack for a given date (rotates every 2 weeks). */
+/** The active style pack for a given date (rotates weekly). */
 export function getStylePack(date = new Date()): StylePack {
-  return STYLE_PACKS[fortnightIndex(date) % STYLE_PACKS.length];
+  return STYLE_PACKS[rotationIndex(date) % STYLE_PACKS.length];
 }
 
-/** Pick an accent color for post index `i`, offset by the fortnight so palettes shift too. */
+/** Pick an accent color for post index `i`, offset by the week so palettes shift too. */
 export function accentFor(pack: StylePack, i: number, date = new Date()): string {
-  const offset = fortnightIndex(date);
+  const offset = rotationIndex(date);
   return pack.palette[(i + offset) % pack.palette.length];
 }

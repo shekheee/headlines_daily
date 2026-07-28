@@ -7,6 +7,9 @@ import { getAccountUsername } from "@/lib/instagram";
 
 const GRAPH = process.env.IG_GRAPH_BASE || "https://graph.facebook.com/v21.0";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const rand = (min: number, max: number) => min + Math.random() * (max - min);
+
 interface IgReply {
   username?: string;
 }
@@ -98,12 +101,18 @@ export async function engageRecentComments(opts: { withinDays?: number; maxPerPo
       if (!author || author === me) continue; // skip our own (incl. the hashtag first-comment)
       const alreadyReplied = (c.replies?.data || []).some((r) => (r.username || "").toLowerCase() === me);
       if (alreadyReplied) continue;
+      // Humans don't reply to EVERY comment. Occasionally skip one so the reply
+      // pattern isn't a perfect 1:1 machine response (left for a later run).
+      if (!opts.dryRun && Math.random() < 0.15) continue;
       const msg = await craftReply(c.text || "");
       if (opts.dryRun) {
         replied++;
         repliedHere++;
         continue;
       }
+      // Stagger replies with a short, human-like pause instead of firing them all
+      // in the same instant (a dead giveaway of automation).
+      await sleep(rand(3000, 12000));
       if (await replyToComment(c.id, msg, token)) {
         replied++;
         repliedHere++;

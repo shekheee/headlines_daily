@@ -1,21 +1,20 @@
 name: Instagram Posts
 
-# Growth-tuned, REEL-HEAVY cadence: 5 posts/day across Indian peak hours
-# (IST = UTC+5:30). Reels drive the most new-follower reach, so 3 are spread
-# across the day. Each run posts ONE item; the type is chosen from the cron
-# expression below:
+# Quality-over-quantity cadence: 3 posts/day across Indian peak hours
+# (IST = UTC+5:30). Fewer, stronger posts concentrate reach on a small account
+# and look far less automated/spammy than a 5x/day machine cadence. Each run
+# posts ONE item; the type is chosen from the cron expression below:
 #   02:30 UTC (~08:00 IST)  -> themed feed post
-#   05:00 UTC (~10:30 IST)  -> history "From the Archives" Reel
-#   08:30 UTC (~14:00 IST)  -> Indian-politics Reel
-#   13:00 UTC (~18:30 IST)  -> trending recent-news Reel
-#   15:30 UTC (~21:00 IST)  -> Story teaser
+#   08:30 UTC (~14:00 IST)  -> history "From the Archives" Reel
+#   13:00 UTC (~18:30 IST)  -> Indian-politics Reel
+# NOTE: exact minutes below are just the EARLIEST trigger — the job then sleeps
+# a random 0–30 min (see "Human-like start jitter") so we never post at the same
+# clock minute every day, which is an obvious automation fingerprint.
 on:
   schedule:
     - cron: "30 2 * * *"
-    - cron: "0 5 * * *"
     - cron: "30 8 * * *"
     - cron: "0 13 * * *"
-    - cron: "30 15 * * *"
   workflow_dispatch:
     inputs:
       action:
@@ -50,15 +49,21 @@ jobs:
         run: |
           case "${{ github.event.schedule }}" in
             "30 2 * * *")  action=theme ;;
-            "0 5 * * *")   action=reel ;;
-            "30 8 * * *")  action=reelpolitics ;;
-            "0 13 * * *")  action=reelnews ;;
-            "30 15 * * *") action=story ;;
+            "30 8 * * *")  action=reel ;;
+            "0 13 * * *")  action=reelpolitics ;;
             *)             action=article ;;
           esac
           if [ -n "${{ github.event.inputs.action }}" ]; then action="${{ github.event.inputs.action }}"; fi
           echo "action=$action" >> "$GITHUB_OUTPUT"
           echo "Selected SOCIAL_ACTION=$action (schedule='${{ github.event.schedule }}')"
+      # Sleep a random 0–30 min so we don't post at the exact same clock minute
+      # every day. Skipped for manual (workflow_dispatch) runs so testing is instant.
+      - name: Human-like start jitter
+        if: github.event_name == 'schedule'
+        run: |
+          secs=$(( RANDOM % 1800 ))
+          echo "Sleeping ${secs}s before posting to vary the daily timing…"
+          sleep "$secs"
       - name: Post one Instagram item
         run: npx tsx scripts/social-slot.ts
         env:
