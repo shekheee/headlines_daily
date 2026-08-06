@@ -17,7 +17,10 @@ concurrency:
 jobs:
   engage:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 25m leaves room for: runner queue + 0–8m jitter + npm ci + replies.
+    # (A prior 15m timeout could expire while waiting for a hosted runner or
+    # during a long jitter sleep — GitHub then reports the job as failed.)
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,11 +30,12 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       # Small random delay so replies don't land at the same clock minute daily.
+      # Cap at 8m so we still have plenty of job time after the sleep.
       # (The script itself also staggers individual replies by a few seconds.)
       - name: Human-like start jitter
         if: github.event_name == 'schedule'
         run: |
-          secs=$(( RANDOM % 900 ))
+          secs=$(( RANDOM % 480 ))
           echo "Sleeping ${secs}s before engaging…"
           sleep "$secs"
       - name: Reply to recent comments

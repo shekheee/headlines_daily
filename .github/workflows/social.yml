@@ -8,7 +8,7 @@ name: Instagram Posts
 #   08:30 UTC (~14:00 IST)  -> history "From the Archives" Reel
 #   13:00 UTC (~18:30 IST)  -> Indian-politics Reel
 # NOTE: exact minutes below are just the EARLIEST trigger — the job then sleeps
-# a random 0–30 min (see "Human-like start jitter") so we never post at the same
+# a random 0–20 min (see "Human-like start jitter") so we never post at the same
 # clock minute every day, which is an obvious automation fingerprint.
 on:
   schedule:
@@ -29,7 +29,7 @@ concurrency:
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,12 +56,13 @@ jobs:
           if [ -n "${{ github.event.inputs.action }}" ]; then action="${{ github.event.inputs.action }}"; fi
           echo "action=$action" >> "$GITHUB_OUTPUT"
           echo "Selected SOCIAL_ACTION=$action (schedule='${{ github.event.schedule }}')"
-      # Sleep a random 0–30 min so we don't post at the exact same clock minute
-      # every day. Skipped for manual (workflow_dispatch) runs so testing is instant.
+      # Sleep a random 0–20 min so we don't post at the exact same clock minute
+      # every day. Cap leaves ~35m for reel generation after the sleep.
+      # Skipped for manual (workflow_dispatch) runs so testing is instant.
       - name: Human-like start jitter
         if: github.event_name == 'schedule'
         run: |
-          secs=$(( RANDOM % 1800 ))
+          secs=$(( RANDOM % 1200 ))
           echo "Sleeping ${secs}s before posting to vary the daily timing…"
           sleep "$secs"
       - name: Post one Instagram item
