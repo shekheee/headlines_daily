@@ -20,12 +20,14 @@ async function main() {
       if (p.errors.length) console.log("  errors:", p.errors.join("; "));
     }
     console.log(`[reels3] posted ${b.posted}/${b.requested} in ${b.tookMs}ms`);
+    if (!b.ok || b.posted === 0) throw new Error("No Instagram reels were published");
     return;
   }
 
   const r = await runSocialSlot(action, new Date(), { dryRun });
   console.log(`[social-slot] ${r.ok ? "✓" : "✗"} ${r.label} (${r.kind}/${r.format}) ${JSON.stringify(r.instagram).slice(0, 160)}`);
   if (r.errors.length) console.log("  errors:", r.errors.join("; "));
+  if (!r.ok) throw new Error(`Instagram post was not published: ${JSON.stringify(r.instagram).slice(0, 300)}`);
 }
 
 main()
