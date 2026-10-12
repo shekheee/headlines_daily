@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export const revalidate = 120;
+export const revalidate = 21600;
 
 async function getData() {
   try {

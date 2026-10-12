@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   description: "Your trusted source for headlines, breaking stories, and in-depth analysis.",
 };
 
-// 15-min ISR: articles are generated ~once/day, so this is plenty fresh while
-// keeping background regenerations (and Neon compute wake-ups) to a minimum.
-export const revalidate = 900;
+// News is generated once/day. Hourly ISR keeps it current without crawler and
+// visitor traffic waking Neon every 15 minutes throughout the day.
+export const revalidate = 3600;
 
 // History is evergreen and lives in its own section — it shouldn't lead the
 // homepage as breaking/top news.
@@ -229,4 +229,3 @@ export default async function HomePage() {
     </div>
   );
 }
-

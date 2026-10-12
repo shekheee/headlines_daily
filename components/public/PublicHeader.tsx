@@ -4,8 +4,9 @@ import { BreakingNewsTicker } from "@/components/public/BreakingNewsTicker";
 import { LanguageSwitcher } from "@/components/public/LanguageSwitcher";
 import { BrandMark } from "@/components/public/BrandMark";
 import { Search } from "lucide-react";
+import { unstable_cache } from "next/cache";
 
-async function getCategories() {
+const getCategories = unstable_cache(async () => {
   // Nav is non-critical: if the DB is unreachable/over-quota, degrade to an
   // empty nav rather than crashing the render (which would also fail the build
   // when it prerenders static pages that share this layout).
@@ -18,7 +19,7 @@ async function getCategories() {
   } catch {
     return [];
   }
-}
+}, ["public-header-categories"], { revalidate: 86400, tags: ["categories"] });
 
 export async function PublicHeader() {
   const categories = await getCategories();

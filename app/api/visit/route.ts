@@ -8,14 +8,14 @@ export const dynamic = "force-dynamic";
 const VISITOR_COOKIE = "lm_vid"; // long-lived: marks a unique browser
 const SESSION_COOKIE = "lm_sess"; // short-lived: also caches the display counts
 const ONE_YEAR = 60 * 60 * 24 * 365;
-const SESSION_TTL = 60 * 30; // 30 minutes
+const SESSION_TTL = 60 * 60 * 24; // one DB touch per browser per day at most
 
 /**
  * Records a visit and returns the running totals.
  *
  * Compute-aware design: our DB is Neon (billed by compute *uptime*, not queries),
  * so a per-page-view write defeats ISR caching and keeps the compute awake. We
- * therefore touch the DB AT MOST ONCE per ~30-minute session per browser:
+ * therefore touch the DB AT MOST ONCE per day per browser:
  *   - uniqueVisitors increments only the first time a browser is ever seen.
  *   - totalViews increments once per session (so the metric counts visits/sessions).
  *   - Within a session we return the counts cached in the session cookie — zero DB.

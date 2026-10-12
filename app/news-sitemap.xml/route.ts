@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { APP_NAME, APP_URL } from "@/lib/seo";
 
-export const revalidate = 1800; // refresh every 30 min (fewer crawler-driven DB hits)
+export const revalidate = 21600; // news is generated once/day; avoid crawler-driven DB wake-ups
 
 function xmlEscape(s: string): string {
   return s
@@ -52,7 +52,7 @@ ${items}
   return new Response(xml, {
     headers: {
       "Content-Type": "application/xml",
-      "Cache-Control": "public, max-age=0, s-maxage=600, stale-while-revalidate=600",
+      "Cache-Control": "public, max-age=0, s-maxage=21600, stale-while-revalidate=21600",
     },
   });
 }

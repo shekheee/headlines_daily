@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+
+const getActiveBreakingNews = unstable_cache(
+  async () => {
+    const now = new Date();
+    return prisma.breakingNews.findMany({
+      where: {
+        isActive: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+  ["active-breaking-news"],
+  { revalidate: 3600, tags: ["breaking-news"] }
+);
 
 export async function GET() {
-  const now = new Date();
-  const items = await prisma.breakingNews.findMany({
-    where: {
-      isActive: true,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const items = await getActiveBreakingNews();
   return NextResponse.json(items);
 }
 

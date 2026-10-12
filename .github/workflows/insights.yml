@@ -4,7 +4,8 @@ name: Instagram Insights
 # perform best, so we can lean into winners.
 on:
   schedule:
-    - cron: "0 20 * * *" # 20:00 UTC daily (after the day's posts have had time to gather engagement)
+    # Weekly is sufficient for tuning and saves six Neon wake-ups per week.
+    - cron: "0 20 * * 0" # Sunday 20:00 UTC
   workflow_dispatch:
 
 concurrency:

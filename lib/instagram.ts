@@ -269,6 +269,45 @@ export interface AccountStats {
   mediaCount: number;
 }
 
+export interface RecentMedia {
+  id: string;
+  timestamp?: string;
+  mediaType?: string;
+  permalink?: string;
+}
+
+/**
+ * Recent media owned by this account.
+ *
+ * Engagement jobs should use Meta as their source of truth instead of waking
+ * Neon just to rediscover media IDs that Instagram already exposes.
+ */
+export async function getRecentMedia(withinDays = 3, limit = 50): Promise<RecentMedia[]> {
+  if (!isInstagramConfigured()) return [];
+  const token = process.env.IG_ACCESS_TOKEN!;
+  const userId = process.env.IG_USER_ID!;
+  const since = Math.floor((Date.now() - withinDays * 86400_000) / 1000);
+  const params = new URLSearchParams({
+    fields: "id,timestamp,media_type,permalink",
+    since: String(since),
+    limit: String(Math.min(Math.max(limit, 1), 100)),
+    access_token: token,
+  });
+  const res = await fetch(`${GRAPH}/${userId}/media?${params}`);
+  const data = await res.json();
+  if (!res.ok || !Array.isArray(data?.data)) {
+    const code = data?.error?.code ? ` (${data.error.code})` : "";
+    const message = data?.error?.message ? `: ${String(data.error.message).slice(0, 180)}` : "";
+    throw new Error(`Instagram media lookup failed${code}${message}`);
+  }
+  return data.data.map((item: { id: string; timestamp?: string; media_type?: string; permalink?: string }) => ({
+    id: item.id,
+    timestamp: item.timestamp,
+    mediaType: item.media_type,
+    permalink: item.permalink,
+  }));
+}
+
 /** The account's current username (so username changes don't break anything). */
 export async function getAccountUsername(): Promise<string | null> {
   if (!isInstagramConfigured()) return null;

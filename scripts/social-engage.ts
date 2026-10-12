@@ -2,10 +2,8 @@
 //   SOCIAL_DRY_RUN=1 npx tsx scripts/social-engage.ts
 import "dotenv/config";
 import { engageRecentComments } from "@/lib/social/engage";
-import { exitForError } from "@/lib/db-quota";
 
 async function main() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   const dryRun = process.env.SOCIAL_DRY_RUN === "1";
   const r = await engageRecentComments({ withinDays: 3, maxPerPost: 8, dryRun });
   console.log(`[engage] posts=${r.postsChecked} comments=${r.commentsSeen} replied=${r.replied}${dryRun ? " (dry run)" : ""}`);
@@ -14,4 +12,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch((e) => exitForError("engage", e));
+  .catch((e) => {
+    console.error("[engage] FAILED:", e);
+    process.exit(1);
+  });

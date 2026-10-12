@@ -1,9 +1,8 @@
 // Auto-reply to comments on our OWN recent Instagram posts. Fast, genuine replies
 // (especially in the first hour) boost the engagement signal and expand reach.
 // This uses ONLY official, permitted endpoints — it never touches other accounts.
-import { prisma } from "@/lib/prisma";
 import { geminiText } from "@/lib/gemini";
-import { getAccountUsername } from "@/lib/instagram";
+import { getAccountUsername, getRecentMedia } from "@/lib/instagram";
 
 const GRAPH = process.env.IG_GRAPH_BASE || "https://graph.facebook.com/v21.0";
 
@@ -80,17 +79,19 @@ export async function engageRecentComments(opts: { withinDays?: number; maxPerPo
   const token = process.env.IG_ACCESS_TOKEN;
   const me = await ourHandle();
 
-  const since = new Date(Date.now() - withinDays * 86400_000);
-  const posts = await prisma.socialPost.findMany({ where: { postedAt: { gte: since } }, orderBy: { postedAt: "desc" } });
+  // Meta already owns the canonical list of recent posts. Reading it directly
+  // avoids three scheduled Neon wake-ups every day and keeps engagement working
+  // even when the news database is sleeping or temporarily over quota.
+  const posts = await getRecentMedia(withinDays);
 
   let commentsSeen = 0;
   let replied = 0;
   for (const post of posts) {
     let comments: IgComment[] = [];
     try {
-      comments = await fetchComments(post.igMediaId, token);
+      comments = await fetchComments(post.id, token);
     } catch (e) {
-      errors.push(`fetch ${post.igMediaId}: ${e instanceof Error ? e.message : "err"}`);
+      errors.push(`fetch ${post.id}: ${e instanceof Error ? e.message : "err"}`);
       continue;
     }
     let repliedHere = 0;

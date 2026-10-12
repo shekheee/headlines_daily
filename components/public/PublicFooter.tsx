@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { BrandMark } from "@/components/public/BrandMark";
 import { VisitorCounter } from "@/components/public/VisitorCounter";
 import { Rss } from "lucide-react";
+import { unstable_cache } from "next/cache";
 
-async function getFooterCategories() {
+const getFooterCategories = unstable_cache(async () => {
   // Non-critical: degrade to no category links if the DB is unreachable/over-quota
   // rather than crashing the render (and the static-page build).
   try {
@@ -16,7 +17,7 @@ async function getFooterCategories() {
   } catch {
     return [];
   }
-}
+}, ["public-footer-categories"], { revalidate: 86400, tags: ["categories"] });
 
 export async function PublicFooter() {
   const categories = await getFooterCategories();

@@ -4,8 +4,9 @@ import { CategoryHeader } from "@/components/public/CategoryHeader";
 import { ArticleCard } from "@/components/public/ArticleCard";
 import { AdSlot } from "@/components/public/AdSlot";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 
-export const revalidate = 1800; // 30-min ISR — new articles still surface quickly
+export const revalidate = 7200; // 2-hour ISR; news is generated once/day
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -14,11 +15,42 @@ interface Props {
 
 const PAGE_SIZE = 12;
 
-async function getCategory(slug: string) {
+const getCategory = unstable_cache(async (slug: string) => {
   return prisma.category.findFirst({
     where: { slug },
   });
-}
+}, ["public-category"], { revalidate: 86400, tags: ["categories"] });
+
+const getCategoryArticles = unstable_cache(async (categoryId: string, page: number) => {
+  const skip = (page - 1) * PAGE_SIZE;
+  const where = {
+    categoryId,
+    status: "PUBLISHED" as const,
+    publishedAt: { lte: new Date() },
+  };
+  const [articles, total] = await Promise.all([
+    prisma.article.findMany({
+      where,
+      orderBy: { publishedAt: "desc" },
+      skip,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        featuredImage: true,
+        publishedAt: true,
+        readingTime: true,
+        isFeatured: true,
+        author: { select: { name: true } },
+        category: { select: { name: true, slug: true, color: true } },
+      },
+    }),
+    prisma.article.count({ where }),
+  ]);
+  return { articles, total };
+}, ["category-articles"], { revalidate: 7200, tags: ["articles"] });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -37,39 +69,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!category) notFound();
 
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
-  const skip = (page - 1) * PAGE_SIZE;
-
-  const [articles, total] = await Promise.all([
-    prisma.article.findMany({
-      where: {
-        categoryId: category.id,
-        status: "PUBLISHED",
-        publishedAt: { lte: new Date() },
-      },
-      orderBy: { publishedAt: "desc" },
-      skip,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        excerpt: true,
-        featuredImage: true,
-        publishedAt: true,
-        readingTime: true,
-        isFeatured: true,
-        author: { select: { name: true } },
-        category: { select: { name: true, slug: true, color: true } },
-      },
-    }),
-    prisma.article.count({
-      where: {
-        categoryId: category.id,
-        status: "PUBLISHED",
-        publishedAt: { lte: new Date() },
-      },
-    }),
-  ]);
+  const { articles, total } = await getCategoryArticles(category.id, page);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 

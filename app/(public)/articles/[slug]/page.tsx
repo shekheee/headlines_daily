@@ -4,11 +4,12 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AdSlot } from "@/components/public/AdSlot";
 import { ArticleCard } from "@/components/public/ArticleCard";
-import { formatDate, formatTimeAgo } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbSchema, newsArticleSchema, stripHtml } from "@/lib/seo";
+import { unstable_cache } from "next/cache";
 
 // Article bodies are immutable after publish, so cache aggressively. Crawlers
 // hit the long tail of ~800 article URLs constantly; a short window made each
@@ -20,7 +21,7 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-async function getArticle(slug: string) {
+const getArticle = unstable_cache(async (slug: string) => {
   return prisma.article.findFirst({
     where: { slug },
     include: {
@@ -29,7 +30,25 @@ async function getArticle(slug: string) {
       tags: { select: { name: true, slug: true } },
     },
   });
-}
+}, ["public-article"], { revalidate: 86400, tags: ["articles"] });
+
+const getRelatedArticles = unstable_cache(async (articleId: string, categoryId: string | null) => {
+  return prisma.article.findMany({
+    where: {
+      categoryId,
+      status: "PUBLISHED",
+      NOT: { id: articleId },
+    },
+    orderBy: { publishedAt: "desc" },
+    take: 3,
+    select: {
+      id: true, title: true, slug: true, excerpt: true, featuredImage: true,
+      publishedAt: true, readingTime: true, isFeatured: true,
+      author: { select: { name: true } },
+      category: { select: { name: true, slug: true, color: true } },
+    },
+  });
+}, ["related-articles"], { revalidate: 86400, tags: ["articles"] });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -78,25 +97,8 @@ export default async function ArticlePage({ params }: Props) {
   const article = await getArticle(slug);
   if (!article || article.status !== "PUBLISHED") notFound();
 
-  // Increment view count (fire-and-forget)
-  prisma.article.update({ where: { id: article.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
-
   // Related articles
-  const related = await prisma.article.findMany({
-    where: {
-      categoryId: article.categoryId,
-      status: "PUBLISHED",
-      NOT: { id: article.id },
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 3,
-    select: {
-      id: true, title: true, slug: true, excerpt: true, featuredImage: true,
-      publishedAt: true, readingTime: true, isFeatured: true,
-      author: { select: { name: true } },
-      category: { select: { name: true, slug: true, color: true } },
-    },
-  });
+  const related = await getRelatedArticles(article.id, article.categoryId);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
   const articleUrl = `${appUrl}/articles/${article.slug}`;
