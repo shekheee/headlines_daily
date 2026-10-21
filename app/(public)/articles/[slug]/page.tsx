@@ -38,7 +38,15 @@ const getArticleBody = unstable_cache(async (slug: string) => {
 
 async function getArticle(slug: string) {
   if (!(await getPublicSearchIndex()).some((article) => article.slug === slug)) return null;
-  return getArticleBody(slug);
+  const article = await getArticleBody(slug);
+  if (!article) return null;
+  // Data Cache serializes Dates to strings. Restore them before SEO metadata
+  // calls toISOString(), including on a warm cache after a listing refresh.
+  return {
+    ...article,
+    publishedAt: article.publishedAt ? new Date(article.publishedAt) : null,
+    updatedAt: new Date(article.updatedAt),
+  };
 }
 
 const getRelatedArticles = unstable_cache(async (articleId: string, categoryId: string | null) => {
