@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export const revalidate = 3600;
+export const revalidate = 21600;
 
 export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://example.com";
@@ -70,7 +70,7 @@ export async function GET() {
   return new NextResponse(rss, {
     headers: {
       "Content-Type": "application/rss+xml; charset=utf-8",
-      "Cache-Control": "s-maxage=3600, stale-while-revalidate",
+      "Cache-Control": "s-maxage=21600, stale-while-revalidate=86400",
     },
   });
 }

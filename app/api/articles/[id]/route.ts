@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import slugify from "slugify";
 import { estimateReadingTime } from "@/lib/utils";
+import { revalidateNews } from "@/lib/revalidate-news";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -107,6 +108,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
 
+  revalidateNews([existing.slug, updated.slug]);
   return NextResponse.json(updated);
 }
 
@@ -117,6 +119,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   const { id } = await params;
-  await prisma.article.delete({ where: { id } });
+  const deleted = await prisma.article.delete({ where: { id } });
+  revalidateNews([deleted.slug]);
   return NextResponse.json({ success: true });
 }

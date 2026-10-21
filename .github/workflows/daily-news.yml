@@ -39,3 +39,11 @@ jobs:
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           GENERATE_LIMIT: ${{ github.event.inputs.limit || '30' }}
+      - name: Refresh website news caches
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET" || { echo "Missing CRON_SECRET for cache refresh"; exit 1; }
+          curl --fail-with-body --retry 2 --max-time 45 -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/api/revalidate"

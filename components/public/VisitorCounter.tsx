@@ -6,6 +6,7 @@ import { Eye, Users } from "lucide-react";
 interface Counts {
   totalViews: number;
   uniqueVisitors: number;
+  live?: boolean;
 }
 
 const fmt = new Intl.NumberFormat("en-IN");
@@ -30,15 +31,15 @@ export function VisitorCounter() {
 
   return (
     <div className="flex items-center justify-center gap-5 py-4 text-[11px] uppercase tracking-widest text-gray-500">
-      <span className="flex items-center gap-1.5" title="Total page views">
+      <span className="flex items-center gap-1.5" title={counts?.live ? "Visits" : "Recorded visits; live tracking is paused"}>
         <Eye className="h-3.5 w-3.5 text-gray-600" aria-hidden />
         <span className="font-semibold text-gray-300 tabular-nums">
           {counts ? fmt.format(counts.totalViews) : "—"}
         </span>
-        <span className="hidden sm:inline">Visits</span>
+        <span className="hidden sm:inline">{counts?.live ? "Visits" : "Recorded visits"}</span>
       </span>
       <span className="h-3 w-px bg-gray-700" aria-hidden />
-      <span className="flex items-center gap-1.5" title="Unique visitors">
+      <span className="flex items-center gap-1.5" title={counts?.live ? "Unique visitors" : "Recorded unique visitors; live tracking is paused"}>
         <Users className="h-3.5 w-3.5 text-gray-600" aria-hidden />
         <span className="font-semibold text-gray-300 tabular-nums">
           {counts ? fmt.format(counts.uniqueVisitors) : "—"}

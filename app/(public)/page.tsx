@@ -4,15 +4,15 @@ import { NewsTicker } from "@/components/public/NewsTicker";
 import { AdSlot } from "@/components/public/AdSlot";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate",
   description: "Your trusted source for headlines, breaking stories, and in-depth analysis.",
 };
 
-// News is generated once/day. Hourly ISR keeps it current without crawler and
-// visitor traffic waking Neon every 15 minutes throughout the day.
-export const revalidate = 3600;
+// Publishing refreshes the listings on demand; six-hour ISR is the fallback.
+export const revalidate = 21600;
 
 // History is evergreen and lives in its own section — it shouldn't lead the
 // homepage as breaking/top news.
@@ -28,7 +28,7 @@ async function getHomeData() {
   }
 }
 
-async function fetchHomeData() {
+const fetchHomeData = unstable_cache(async () => {
   const [featuredArticles, categories, latestArticles, trendingArticles] = await Promise.all([
     prisma.article.findMany({
       where: { status: "PUBLISHED", publishedAt: { lte: new Date() }, ...NEWS_ONLY },
@@ -84,7 +84,7 @@ async function fetchHomeData() {
   ]);
 
   return { featuredArticles, categories, latestArticles, trendingArticles };
-}
+}, ["home-news"], { revalidate: 21600, tags: ["articles", "categories"] });
 
 export default async function HomePage() {
   const { featuredArticles, categories, latestArticles, trendingArticles } = await getHomeData();

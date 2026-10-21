@@ -1,12 +1,12 @@
-// Vercel cron job: runs every minute to publish scheduled articles
-// Configure in vercel.json: { "crons": [{ "path": "/api/cron/publish", "schedule": "* * * * *" }] }
+// Publish scheduled drafts once daily; see vercel.json.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { revalidateNews } from "@/lib/revalidate-news";
 
 export async function GET(req: NextRequest) {
   // Verify cron secret to prevent unauthorized access
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -20,5 +20,6 @@ export async function GET(req: NextRequest) {
     data: { status: "PUBLISHED" },
   });
 
+  if (result.count) revalidateNews();
   return NextResponse.json({ published: result.count, at: now.toISOString() });
 }

@@ -5,8 +5,9 @@ import { ArticleCard } from "@/components/public/ArticleCard";
 import { AdSlot } from "@/components/public/AdSlot";
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
+import { getPublicSearchIndex } from "@/lib/public-search";
 
-export const revalidate = 7200; // 2-hour ISR; news is generated once/day
+export const revalidate = 21600;
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -15,42 +16,18 @@ interface Props {
 
 const PAGE_SIZE = 12;
 
-const getCategory = unstable_cache(async (slug: string) => {
-  return prisma.category.findFirst({
-    where: { slug },
-  });
-}, ["public-category"], { revalidate: 86400, tags: ["categories"] });
+const getCategories = unstable_cache(async () => prisma.category.findMany(),
+  ["public-category-list"], { revalidate: 86400, tags: ["categories"] });
+
+async function getCategory(slug: string) {
+  return (await getCategories()).find((category) => category.slug === slug);
+}
 
 const getCategoryArticles = unstable_cache(async (categoryId: string, page: number) => {
   const skip = (page - 1) * PAGE_SIZE;
-  const where = {
-    categoryId,
-    status: "PUBLISHED" as const,
-    publishedAt: { lte: new Date() },
-  };
-  const [articles, total] = await Promise.all([
-    prisma.article.findMany({
-      where,
-      orderBy: { publishedAt: "desc" },
-      skip,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        excerpt: true,
-        featuredImage: true,
-        publishedAt: true,
-        readingTime: true,
-        isFeatured: true,
-        author: { select: { name: true } },
-        category: { select: { name: true, slug: true, color: true } },
-      },
-    }),
-    prisma.article.count({ where }),
-  ]);
-  return { articles, total };
-}, ["category-articles"], { revalidate: 7200, tags: ["articles"] });
+  const matches = (await getPublicSearchIndex()).filter((a) => a.categoryId === categoryId);
+  return { articles: matches.slice(skip, skip + PAGE_SIZE), total: matches.length };
+}, ["category-articles-v2"], { revalidate: 21600, tags: ["articles"] });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -68,7 +45,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const category = await getCategory(slug);
   if (!category) notFound();
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const parsedPage = Number(pageParam ?? 1);
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const { articles, total } = await getCategoryArticles(category.id, page);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);

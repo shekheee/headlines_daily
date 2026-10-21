@@ -10,45 +10,41 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbSchema, newsArticleSchema, stripHtml } from "@/lib/seo";
 import { unstable_cache } from "next/cache";
+import { getPublicSearchIndex } from "@/lib/public-search";
 
-// Article bodies are immutable after publish, so cache aggressively. Crawlers
-// hit the long tail of ~800 article URLs constantly; a short window made each
-// one re-query Neon every few minutes and kept the DB awake. 24h ISR means each
-// page regenerates at most once/day (rare admin edits appear within a day).
-export const revalidate = 86400;
+// Retain published bodies for 30 days; admin changes invalidate their exact URL.
+// Daily publishing refreshes listings without flushing the article archive.
+export const revalidate = 2592000;
+
+// Enable on-demand ISR for article URLs instead of rendering on every request.
+export function generateStaticParams() {
+  return [];
+}
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
-const getArticle = unstable_cache(async (slug: string) => {
+const getArticleBody = unstable_cache(async (slug: string) => {
   return prisma.article.findFirst({
-    where: { slug },
+    where: { slug, status: "PUBLISHED", publishedAt: { lte: new Date() } },
     include: {
       author: { select: { name: true, image: true } },
       category: { select: { name: true, slug: true, color: true } },
       tags: { select: { name: true, slug: true } },
     },
   });
-}, ["public-article"], { revalidate: 86400, tags: ["articles"] });
+}, ["public-article-v2"], { revalidate: 2592000, tags: ["article-bodies"] });
+
+async function getArticle(slug: string) {
+  if (!(await getPublicSearchIndex()).some((article) => article.slug === slug)) return null;
+  return getArticleBody(slug);
+}
 
 const getRelatedArticles = unstable_cache(async (articleId: string, categoryId: string | null) => {
-  return prisma.article.findMany({
-    where: {
-      categoryId,
-      status: "PUBLISHED",
-      NOT: { id: articleId },
-    },
-    orderBy: { publishedAt: "desc" },
-    take: 3,
-    select: {
-      id: true, title: true, slug: true, excerpt: true, featuredImage: true,
-      publishedAt: true, readingTime: true, isFeatured: true,
-      author: { select: { name: true } },
-      category: { select: { name: true, slug: true, color: true } },
-    },
-  });
-}, ["related-articles"], { revalidate: 86400, tags: ["articles"] });
+  return (await getPublicSearchIndex())
+    .filter((a) => a.id !== articleId && a.categoryId === categoryId).slice(0, 3);
+}, ["related-articles-v2"], { revalidate: 21600, tags: ["articles"] });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;

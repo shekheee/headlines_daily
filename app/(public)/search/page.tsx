@@ -1,15 +1,15 @@
-import { prisma } from "@/lib/prisma";
+import { getPublicSearchIndex } from "@/lib/public-search";
 import { ArticleCard } from "@/components/public/ArticleCard";
 import type { Metadata } from "next";
 
 interface Props {
-  searchParams: { q?: string; page?: string };
+  searchParams: Promise<{ q?: string; page?: string }>;
 }
 
 const PAGE_SIZE = 12;
 
-export function generateMetadata({ searchParams }: Props): Metadata {
-  const q = searchParams.q?.trim();
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const q = (await searchParams).q?.trim();
   return {
     title: q
       ? `Search: ${q} | ${process.env.NEXT_PUBLIC_APP_NAME || "Lok Mandate"}`
@@ -18,39 +18,19 @@ export function generateMetadata({ searchParams }: Props): Metadata {
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const q = searchParams.q?.trim() ?? "";
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
+  const params = await searchParams;
+  const q = params.q?.trim().slice(0, 200) ?? "";
+  const parsedPage = Number(params.page ?? 1);
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const skip = (page - 1) * PAGE_SIZE;
 
-  const where = q
-    ? {
-        status: "PUBLISHED" as const,
-        publishedAt: { lte: new Date() },
-        OR: [
-          { title: { contains: q, mode: "insensitive" as const } },
-          { excerpt: { contains: q, mode: "insensitive" as const } },
-          { tags: { some: { name: { contains: q, mode: "insensitive" as const } } } },
-        ],
-      }
-    : { status: "PUBLISHED" as const, publishedAt: { lte: new Date() } };
-
-  const [articles, total] = q
-    ? await Promise.all([
-        prisma.article.findMany({
-          where,
-          orderBy: { publishedAt: "desc" },
-          skip,
-          take: PAGE_SIZE,
-          select: {
-            id: true, title: true, slug: true, excerpt: true, featuredImage: true,
-            publishedAt: true, readingTime: true, isFeatured: true,
-            author: { select: { name: true } },
-            category: { select: { name: true, slug: true, color: true } },
-          },
-        }),
-        prisma.article.count({ where }),
-      ])
-    : [[], 0];
+  const term = q.toLocaleLowerCase("en-IN");
+  const matches = q ? (await getPublicSearchIndex()).filter((a) =>
+    [a.title, a.excerpt ?? "", ...a.tags.map((t) => t.name)]
+      .some((value) => value.toLocaleLowerCase("en-IN").includes(term))
+  ) : [];
+  const total = matches.length;
+  const articles = matches.slice(skip, skip + PAGE_SIZE);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 

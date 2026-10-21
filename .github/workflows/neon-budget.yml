@@ -1,0 +1,20 @@
+name: Neon Compute Budget
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check monthly compute runway without querying Postgres
+        run: node scripts/neon-budget.mjs
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: soft-heart-60989635
+          NEON_MONTHLY_CU_HOURS: "100"

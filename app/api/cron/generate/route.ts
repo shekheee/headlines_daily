@@ -5,6 +5,7 @@
 //   curl -H "Authorization: Bearer $CRON_SECRET" "https://<domain>/api/cron/generate?limit=4"
 import { NextRequest, NextResponse } from "next/server";
 import { DEFAULT_MAX_PER_RUN, generateDailyNews } from "@/lib/generate-news";
+import { revalidateNews } from "@/lib/revalidate-news";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await generateDailyNews(maxPerRun);
+    if (result.created) revalidateNews();
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

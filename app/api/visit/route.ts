@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 
-// Never cache — but we hit the DB at most once per session (see below).
+const getSavedCounts = unstable_cache(async () => {
+  return await prisma.siteCounter.findUnique({
+    where: { id: "global" },
+    select: { totalViews: true, uniqueVisitors: true },
+  }) ?? { totalViews: 0, uniqueVisitors: 0 };
+}, ["saved-visitor-counts"], { revalidate: 86400 });
+
+// Live mode writes once per browser/day; budget mode reads cached saved totals.
 export const dynamic = "force-dynamic";
 
 const VISITOR_COOKIE = "lm_vid"; // long-lived: marks a unique browser
@@ -22,6 +30,11 @@ const SESSION_TTL = 60 * 60 * 24; // one DB touch per browser per day at most
  */
 export async function POST() {
   try {
+    // Per-browser throttling still wakes Neon for EVERY new visitor. Keep the
+    // historical totals without traffic-driven writes on the free compute tier.
+    if (process.env.ENABLE_LIVE_VISITOR_COUNTS !== "true") {
+      return NextResponse.json({ ...await getSavedCounts(), live: false });
+    }
     const store = await cookies();
     const cached = store.get(SESSION_COOKIE)?.value;
 
@@ -29,7 +42,7 @@ export async function POST() {
     if (cached) {
       const [tv, uv] = cached.split(".").map((n) => Number(n));
       if (Number.isFinite(tv) && Number.isFinite(uv)) {
-        return NextResponse.json({ totalViews: tv, uniqueVisitors: uv });
+        return NextResponse.json({ totalViews: tv, uniqueVisitors: uv, live: true });
       }
     }
 
@@ -45,7 +58,7 @@ export async function POST() {
       select: { totalViews: true, uniqueVisitors: true },
     });
 
-    const res = NextResponse.json(counter);
+    const res = NextResponse.json({ ...counter, live: true });
     // Cache the fresh counts in the session cookie so subsequent views this
     // session need no DB access at all.
     res.cookies.set(SESSION_COOKIE, `${counter.totalViews}.${counter.uniqueVisitors}`, {
@@ -66,6 +79,6 @@ export async function POST() {
     }
     return res;
   } catch {
-    return NextResponse.json({ totalViews: 0, uniqueVisitors: 0 }, { status: 200 });
+    return NextResponse.json({ totalViews: null, uniqueVisitors: null, live: false }, { status: 503 });
   }
 }

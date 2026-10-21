@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import slugify from "slugify";
 import { estimateReadingTime } from "@/lib/utils";
+import { revalidateNews } from "@/lib/revalidate-news";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -114,5 +115,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  revalidateNews([article.slug]);
   return NextResponse.json(article, { status: 201 });
 }

@@ -3,7 +3,14 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL!;
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg({
+    connectionString,
+    max: 3,
+    min: 0,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 15000,
+    application_name: "lokmandate",
+  });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
