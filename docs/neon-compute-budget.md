@@ -12,16 +12,20 @@ Compute is billed for active time, not article count or SQL query count.
 - New visitor writes are disabled by default. Recorded totals remain visible;
   they are not a live analytics metric. `ENABLE_LIVE_VISITOR_COUNTS=true` opts
   back in, but every new browser can extend database active time.
-- Shared six-hour search index also supplies category pagination, related
-  articles, and invalid article URL checks. Arbitrary search terms do not
-  create arbitrary database cache misses.
+- Search and category pagination share a six-hour index. Their callers must
+  not wrap it in another unstable_cache scope: Next 16 bypasses nested cache
+  reads. Article pages never load the complete index. Related stories use a
+  bounded four-row query shared by category.
 - Home data refreshes at most every six hours. Article bodies retain a 30-day
   cache; edits/deletions invalidate the exact URL. Daily publication invalidates
   listings, feed and sitemaps without flushing the archive.
-- Daily News calls the protected `/api/revalidate` endpoint using CRON_SECRET.
+- Daily News calls the protected `/api/revalidate` endpoint only after creating
+  articles, passing their slugs. Zero-article error runs fail and do not flush
+  caches. Calls use CRON_SECRET.
   This secret must match between Vercel and GitHub Actions.
 - Neon Compute Budget runs daily through the management API, without a SQL
-  connection. It fails if projected usage exceeds 80 CU-hours or 100 are used.
+  connection. It checks both compute and public database transfer (5 GB/month),
+  failing at 80% projected usage or when either allowance is exhausted.
   GitHub notification settings determine whether a failure generates an email.
 
 ## Verification and limits
@@ -35,3 +39,10 @@ paid tier if the database cannot remain idle sufficiently often.
 
 Normal publication and social jobs remain enabled. Never turn off the database
 on a timer to save compute: that would break admin, publishing and cold pages.
+
+Regression checks: `npx tsx scripts/test-public-cache.ts` and
+`node --test scripts/neon-budget.test.mjs`. They use local stand-ins and never
+query Neon. A fix does not restore an already exhausted transfer allowance.
+Homepage query failures are allowed to fail a cold build or ISR refresh, so an
+outage cannot produce a successful deployment with empty news. Preserve the
+existing production deployment until the database is accessible again.

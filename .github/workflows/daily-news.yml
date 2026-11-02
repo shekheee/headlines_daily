@@ -28,6 +28,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - name: Generate daily news
+        id: generate
         run: npx tsx scripts/generate-news.ts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -40,10 +41,13 @@ jobs:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           GENERATE_LIMIT: ${{ github.event.inputs.limit || '30' }}
       - name: Refresh website news caches
+        if: steps.generate.outputs.created != '' && steps.generate.outputs.created != '0'
         env:
           APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          REFRESH_BODY: ${{ steps.generate.outputs.refresh_body }}
         run: |
           test -n "$CRON_SECRET" || { echo "Missing CRON_SECRET for cache refresh"; exit 1; }
           curl --fail-with-body --retry 2 --max-time 45 -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" "${APP_URL%/}/api/revalidate"
+            -H "Authorization: Bearer $CRON_SECRET" -H "Content-Type: application/json" \
+            --data "$REFRESH_BODY" "${APP_URL%/}/api/revalidate"
