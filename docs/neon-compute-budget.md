@@ -43,3 +43,6 @@ on a timer to save compute: that would break admin, publishing and cold pages.
 Regression checks: `npx tsx scripts/test-public-cache.ts` and
 `node --test scripts/neon-budget.test.mjs`. They use local stand-ins and never
 query Neon. A fix does not restore an already exhausted transfer allowance.
+Homepage query failures are allowed to fail a cold build or ISR refresh, so an
+outage cannot produce a successful deployment with empty news. Preserve the
+existing production deployment until the database is accessible again.

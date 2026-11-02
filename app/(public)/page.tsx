@@ -19,13 +19,9 @@ export const revalidate = 21600;
 const NEWS_ONLY = { NOT: { category: { slug: "history" } } } as const;
 
 async function getHomeData() {
-  try {
-    return await fetchHomeData();
-  } catch {
-    // DB unreachable/over-quota: render a valid (empty) page instead of crashing
-    // the build/render. ISR will fill it in on the next successful revalidate.
-    return { featuredArticles: [], categories: [], latestArticles: [], trendingArticles: [] };
-  }
+  // A failed refresh must retain the previous ISR page, not replace it with
+  // empty news. A cold build without DB/cache access should fail deployment.
+  return fetchHomeData();
 }
 
 const fetchHomeData = unstable_cache(async () => {
