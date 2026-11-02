@@ -10,7 +10,8 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbSchema, newsArticleSchema, stripHtml } from "@/lib/seo";
 import { unstable_cache } from "next/cache";
-import { getPublicSearchIndex } from "@/lib/public-search";
+import { cache } from "react";
+import { getPublicRelatedArticles } from "@/lib/public-search";
 
 // Retain published bodies for 30 days; admin changes invalidate their exact URL.
 // Daily publishing refreshes listings without flushing the article archive.
@@ -36,8 +37,7 @@ const getArticleBody = unstable_cache(async (slug: string) => {
   });
 }, ["public-article-v2"], { revalidate: 2592000, tags: ["article-bodies"] });
 
-async function getArticle(slug: string) {
-  if (!(await getPublicSearchIndex()).some((article) => article.slug === slug)) return null;
+const getArticle = cache(async (slug: string) => {
   const article = await getArticleBody(slug);
   if (!article) return null;
   // Data Cache serializes Dates to strings. Restore them before SEO metadata
@@ -47,12 +47,7 @@ async function getArticle(slug: string) {
     publishedAt: article.publishedAt ? new Date(article.publishedAt) : null,
     updatedAt: new Date(article.updatedAt),
   };
-}
-
-const getRelatedArticles = unstable_cache(async (articleId: string, categoryId: string | null) => {
-  return (await getPublicSearchIndex())
-    .filter((a) => a.id !== articleId && a.categoryId === categoryId).slice(0, 3);
-}, ["related-articles-v2"], { revalidate: 21600, tags: ["articles"] });
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -102,7 +97,8 @@ export default async function ArticlePage({ params }: Props) {
   if (!article || article.status !== "PUBLISHED") notFound();
 
   // Related articles
-  const related = await getRelatedArticles(article.id, article.categoryId);
+  // Related links are optional. A quota outage must not break a cached body.
+  const related = await getPublicRelatedArticles(article.id, article.categoryId).catch(() => []);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
   const articleUrl = `${appUrl}/articles/${article.slug}`;

@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
-// Share the same small index across all search terms and article existence
-// checks. Random crawler queries must not create a new SQL query per URL.
+// Share this index between search and category pagination only. Call it outside
+// other unstable_cache scopes: nested calls bypass the inner cache in Next 16.
 // Each chunk stays comfortably below Vercel's 2 MB Data Cache entry limit.
 const getSearchChunk = unstable_cache(async (page: number) => {
   return prisma.article.findMany({
@@ -28,4 +28,29 @@ export async function getPublicSearchIndex() {
     if (chunk.length < 200) break;
   }
   return articles;
+}
+
+export async function getPublicCategoryArticles(categoryId: string, page: number, pageSize = 12) {
+  const matches = (await getPublicSearchIndex()).filter((a) => a.categoryId === categoryId);
+  const skip = (page - 1) * pageSize;
+  return { articles: matches.slice(skip, skip + pageSize), total: matches.length };
+}
+
+// One bounded query per category, not a complete index scan per article.
+const getRelatedCandidates = unstable_cache(async (categoryId: string | null) => {
+  return prisma.article.findMany({
+    where: { categoryId, status: "PUBLISHED", publishedAt: { lte: new Date() } },
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    take: 4,
+    select: {
+      id: true, title: true, slug: true, excerpt: true, featuredImage: true,
+      publishedAt: true, readingTime: true, isFeatured: true,
+      author: { select: { name: true } },
+      category: { select: { name: true, slug: true, color: true } },
+    },
+  });
+}, ["related-category-candidates"], { revalidate: 21600, tags: ["related-articles"] });
+
+export async function getPublicRelatedArticles(articleId: string, categoryId: string | null) {
+  return (await getRelatedCandidates(categoryId)).filter((a) => a.id !== articleId).slice(0, 3);
 }

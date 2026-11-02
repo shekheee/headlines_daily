@@ -5,7 +5,7 @@ import { ArticleCard } from "@/components/public/ArticleCard";
 import { AdSlot } from "@/components/public/AdSlot";
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
-import { getPublicSearchIndex } from "@/lib/public-search";
+import { getPublicCategoryArticles } from "@/lib/public-search";
 
 export const revalidate = 21600;
 
@@ -22,12 +22,6 @@ const getCategories = unstable_cache(async () => prisma.category.findMany(),
 async function getCategory(slug: string) {
   return (await getCategories()).find((category) => category.slug === slug);
 }
-
-const getCategoryArticles = unstable_cache(async (categoryId: string, page: number) => {
-  const skip = (page - 1) * PAGE_SIZE;
-  const matches = (await getPublicSearchIndex()).filter((a) => a.categoryId === categoryId);
-  return { articles: matches.slice(skip, skip + PAGE_SIZE), total: matches.length };
-}, ["category-articles-v2"], { revalidate: 21600, tags: ["articles"] });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -47,7 +41,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const parsedPage = Number(pageParam ?? 1);
   const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const { articles, total } = await getCategoryArticles(category.id, page);
+  const { articles, total } = await getPublicCategoryArticles(category.id, page, PAGE_SIZE);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 

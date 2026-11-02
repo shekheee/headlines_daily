@@ -6,6 +6,7 @@
 import "dotenv/config";
 import { DEFAULT_MAX_PER_RUN, generateDailyNews } from "@/lib/generate-news";
 import { exitForError } from "@/lib/db-quota";
+import { appendFileSync } from "node:fs";
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -18,6 +19,13 @@ async function main() {
   for (const a of result.articles) console.log(`  - [${a.category}] ${a.title}`);
   if (result.errors.length) console.log("[generate-news] errors:", result.errors);
   console.log("[generate-news] instagram:", JSON.stringify(result.instagram));
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT,
+      `created=${result.created}\nrefresh_body=${JSON.stringify({ slugs: result.articles.map((a) => a.slug) })}\n`);
+  }
+  if (!result.created && result.errors.length) {
+    throw new Error("No articles were generated; cache refresh skipped. See generation errors above.");
+  }
 }
 
 main()

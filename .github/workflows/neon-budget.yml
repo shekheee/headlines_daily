@@ -12,9 +12,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Check monthly compute runway without querying Postgres
+      - name: Check compute and transfer budgets without querying Postgres
         run: node scripts/neon-budget.mjs
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: soft-heart-60989635
           NEON_MONTHLY_CU_HOURS: "100"
+          NEON_MONTHLY_TRANSFER_GB: "5"
